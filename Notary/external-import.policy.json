@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "receipt_id": "notary-erdos848-external-import",
+  "trust_mode": "kernel-only",
+  "attestation_class": "current-only",
+  "receipt_path": ".notary/receipts/external-import.json",
+  "bind_git_head": true,
+  "input_globs": [
+    "Notary.lean",
+    "Notary/*.json",
+    "scripts/theorem_notary.py",
+    "scripts/notary_fetch.py",
+    "scripts/notary_receipt.py",
+    "lean-toolchain",
+    "lakefile.lean",
+    "lake-manifest.json",
+    ".notary/host-runtime.json",
+    ".notary/ERDOS848_OLEAN_CACHE_MANIFEST.json",
+    ".notary/public-evidence/*.json",
+    ".notary/erdos848/lib/lean/**/*.olean",
+    ".lake/build/lib/lean/**/*.olean",
+    ".lake/packages/*/.lake/build/lib/lean/**/*.olean"
+  ],
+  "exclude_globs": [],
+  "kernel_contract": {
+    "trust_zero": true,
+    "endpoint_declarations": ["NotaryErdos848.external_all_N"],
+    "allowed_axioms": ["propext", "Classical.choice", "Quot.sound"],
+    "scope_note": "New external consumer only; upstream proof uses the exact grandfathered archive, not a fresh transitive replay."
+  },
+  "archive_evidence": [{
+    "uri": "https://github.com/crabsatellite/erdos-848-squarefree-product/releases/download/v1.0.5-kernel/ERDOS848_OLEAN_CACHE_MANIFEST.json",
+    "sha256": "3cbde25db4c5eac8209dd428cc5d95eab648766023db87418c8ea8c66353c527"
+  }],
+  "command": {
+    "argv": ["lake", "build", "notaryErdos848"],
+    "cwd": ".",
+    "required_output_tokens": ["notary_external_import=passed"],
+    "forbidden_output_tokens": ["sorryAx", "Lean.ofReduceBool", "declaration uses 'sorry'"]
+  }
+}

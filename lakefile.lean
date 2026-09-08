@@ -68,6 +68,28 @@ lean_lib Mathlib where
 lean_lib Cache where
   globs := #[`Cache.+]
 
+/-- Provenance metadata for checked public theorem components. -/
+lean_lib Notary where
+  roots := #[`Notary]
+
+/--
+Build the external Erdos848 consumer under the explicitly selected historical
+kernel-archive policy. Provider credit is metadata, never a proof premise.
+Run after restoring the locked artifacts. The provenance module is a dependency.
+-/
+target notaryErdos848 pkg : System.FilePath := do
+  let some mod ← findModule? `Notary | error "Notary module is missing"
+  (← mod.olean.fetch).mapM fun _ => do
+    let result ← IO.Process.output {
+      cmd := "python"
+      args := #["scripts/theorem_notary.py", "build", "--allow-grandfathered-archive"]
+      cwd := pkg.dir
+    }
+    IO.print result.stdout
+    unless result.exitCode == 0 do
+      error s!"Theorem component import failed: {result.stderr}"
+    return pkg.dir / ".notary" / "external-import-result.json"
+
 lean_lib MathlibTest where
   globs := #[`MathlibTest.+]
 

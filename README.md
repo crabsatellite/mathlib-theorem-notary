@@ -1,5 +1,11 @@
 # mathlib4
 
+This fork develops a **Glass Box theorem notarization layer**. Its first case is
+the external import of Erdős #848 with publicly verifiable provider credit for
+Alex Chengyu Li. See [the implementation and build guide](Notary/README.md) and
+[the protocol](docs/THEOREM_NOTARY_PROTOCOL.md). Provider credit adds no axioms
+and is not mathematical endorsement. The upstream mathlib README follows.
+
 ![GitHub CI](https://github.com/leanprover-community/mathlib4/actions/workflows/build.yml/badge.svg?branch=master)
 [![Bors enabled](https://raw.githubusercontent.com/bors-ng/bors-ng.github.io/refs/heads/master/images/badge_small.svg)](https://mathlib-bors-ca18eefec4cb.herokuapp.com/repositories/16)
 [![project chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://leanprover.zulipchat.com)

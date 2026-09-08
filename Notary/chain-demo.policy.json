@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "receipt_id": "notary-eight-layer-multiple-theorem-attack-fixture",
+  "trust_mode": "kernel-only",
+  "attestation_class": "current-only",
+  "receipt_path": ".notary/receipts/chain-demo.json",
+  "bind_git_head": true,
+  "input_globs": [
+    "Notary.lean", "Notary/chain-demo.policy.json", "scripts/notary_chain.py",
+    "scripts/notary_chain_demo.py", "scripts/theorem_notary.py",
+    "scripts/notary_fetch.py", "scripts/notary_receipt.py",
+    "lean-toolchain", "lakefile.lean", "lake-manifest.json",
+    ".notary/host-runtime.json", ".lake/build/lib/lean/Notary.olean"
+  ],
+  "exclude_globs": [],
+  "kernel_contract": {
+    "trust_zero": true,
+    "endpoint_declarations": ["NotaryLayer7.identity", "NotaryLayer7.successor"],
+    "allowed_axioms": [],
+    "scope_note": "Eight newly checked controlled fixture modules and adversarial admission tests. No theorem from Erdos848 is rechecked here."
+  },
+  "command": {
+    "argv": ["python", "scripts/notary_chain_demo.py"],
+    "cwd": ".",
+    "required_output_tokens": ["notary_chain_kernel_and_attacks=passed"],
+    "forbidden_output_tokens": ["Traceback", "Undetected compiled artifact modification"]
+  }
+}
