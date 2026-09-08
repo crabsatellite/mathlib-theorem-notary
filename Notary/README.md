@@ -23,10 +23,14 @@ the historical kernel-verification record.
   consumer of the real `Erdos848.PaperGeneratedCertificateProvider.all_N`.
 - `#notary_info` for showing credit and provenance beside the actual Lean type.
 
-This is a case-integrated v0, not yet a general admission service for arbitrary
-new theorem packages. A controlled fresh-proof example exports two independently certified theorems
-from each of eight modules. General admission of arbitrary uploaded packages,
-portable incremental checking, and registry servers remain future work.
+The historical #848 adapter is accompanied by a declaration-exchange reference
+profile: generic selected-theorem export, a separate data-only admission checker,
+consumer locks and receipts, and three-project default Lake integration.
+See the [normative profile](SPEC.md), [reproduction guide](REFERENCE.md), and
+[contribution/prior-work analysis](RELATED_WORK.md). A controlled depth example
+also exports two independently certified theorems from each of eight modules.
+An open untrusted-upload service, portable incremental checking and registry
+servers remain future work.
 The checked-in signed record is public registry data and can be served by GitHub
 or any byte-preserving mirror. It grants no new mathematical authority to that
 server or to the provider.
@@ -166,9 +170,11 @@ python scripts/notary_chain.py --lock .notary/chain-demo/consumer-0.lock.json --
 machine-readable result. Never adopt a graph's advertised root as the consumer
 lock or accept a publisher's self-written success receipt. The actual host build
 must verify every uncovered dependency and the exact import closure. This v0
-checks controlled fresh fixtures and the locked #848 archive, not arbitrary
-hostile native code or metaprograms. Process isolation and an independent general
-admission checker remain required before operating an open submission service.
+checks controlled fresh fixtures and the locked #848 archive. The new v1 checker
+adds data-only kernel replay, isolated search paths and actual dependency/type
+inspection for configured theorem bundles. It does not provide a process sandbox
+for arbitrary hostile native code or source metaprograms; that remains required
+before operating an open submission service.
 
 The #848 target also inspects the real `tailClose` theorem beside `all_N`, writing
 `.notary/erdos848-declarations.json`. Its reusable consumer artifact is

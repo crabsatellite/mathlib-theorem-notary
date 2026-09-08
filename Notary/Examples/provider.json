@@ -1,0 +1,7 @@
+{
+  "source_root": "Provider",
+  "modules": [{"module": "NotaryExample.Trees", "declarations": [
+    "NotaryExample.Tree.mirror_twice", "NotaryExample.Tree.leaves_mirror"
+  ]}],
+  "allowed_axioms": []
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "receipt_id": "notary-reference-v1-composition-cold-cross-project-attacks",
+  "trust_mode": "kernel-only",
+  "attestation_class": "current-only",
+  "receipt_path": ".notary/receipts/reference-v1.json",
+  "bind_git_head": true,
+  "input_globs": [
+    "Notary/Verifier.lean", "Notary/Composition.lean", "Notary/Examples/**/*.lean",
+    "Notary/Examples/provider.json", "Notary/reference.policy.json",
+    "scripts/notary_protocol.py", "scripts/notary_cli.py", "scripts/notary_reference_experiment.py",
+    "scripts/theorem_notary.py", "scripts/notary_fetch.py", "scripts/notary_receipt.py",
+    "lean-toolchain", ".notary/host-runtime.json"
+  ],
+  "exclude_globs": [],
+  "kernel_contract": {
+    "trust_zero": true,
+    "endpoint_declarations": [
+      "TheoremNotary.Composition.composition_sound",
+      "NotaryApplication.mirroredPayload_correct", "NotaryApplication.frameSize_correct"
+    ],
+    "allowed_axioms": [],
+    "scope_note": "Fresh data-only Lean-kernel replay for portable three-project examples, abstract composition model, and hostile admission tests; no Erdos848 replay."
+  },
+  "command": {
+    "argv": ["python", "scripts/notary_reference_experiment.py"],
+    "cwd": ".",
+    "required_output_tokens": ["notary_reference_v1=passed"],
+    "forbidden_output_tokens": ["Traceback", "AssertionError"]
+  }
+}
