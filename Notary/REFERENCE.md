@@ -1,16 +1,27 @@
 # Running the declaration exchange reference
 
-The portable example needs the pinned Lean `v4.30.0-rc2`, Python with
+The standalone example needs the pinned Lean `v4.30.0-rc2`, Python with
 `Notary/requirements.txt`, and Node.js for cross-language conformance tests.
 It imports only the official Lean foundation. It does not need the #848
 archive, upstream mathlib cache, a registry server, or a provider account.
-Use the existing fork checkout and run commands from its root.
+Use the `notary/erdos848-v0` branch of the
+[reference repository](https://github.com/crabsatellite/mathlib-theorem-notary)
+and run commands from its root. The branch name retains the earlier archive
+case; these commands run the small general example. Install the exact toolchain
+with `elan toolchain install leanprover/lean4:v4.30.0-rc2` if it is not already
+available. Keep the pinned `lean-toolchain` file when reproducing this profile.
 
 ```text
 python -m pip install -r Notary/requirements.txt
-python -m unittest discover -s scripts -p "test_*.py" -v
 python scripts/notary_reference_experiment.py
 ```
+
+The runner includes the Python regressions and Node.js conformance checks before
+the exchange experiment; they do not need a separate preceding invocation.
+For a fresh checkout, the recorded implementation bytes can be obtained by
+checking out commit `dbbadfdd3f2232f548f39150dfcdc6e4d670bd4f`. The
+`implementation_inputs` inventory in [reference-result.json](reference-result.json)
+identifies the inputs used for the published experiment.
 
 The experiment is standalone and requires no private orchestration service.
 Its admission operations acquire an exclusive local execution lease and
@@ -31,8 +42,25 @@ default `lake build` target imports both declarations into a round-trip package.
 A third package proves payload correctness and frame-size correctness using
 both of the second package's theorems. The checker reports the actual referenced
 declarations; the test rejects a third package that merely restates independent
-trivial facts. There are six separately signed public conclusions across these
-three projects. The existing eight-layer experiment tests deeper wrapping.
+trivial facts. Each of these conclusions has its own certificate, so downstream
+selection is not restricted to a repository's main result. The existing
+eight-layer experiment separately tests deeper wrapping.
+
+## What to inspect in the result
+
+| Operation | Expected evidence | What it establishes |
+|---|---|---|
+| Follow provider, round-trip and application proofs | `actual_cross_project_theorem_use: true`, with referenced declarations in the checker reports | Later proofs actually consume the intermediate certified theorems. |
+| Admit transferred public bytes into fresh local state | `cold_kernel_replays: 1` | The receiver performs its own proof check. |
+| Admit the unchanged selection again | `warm_kernel_replays: 0`, with reuse checked by the runner | The same consumer reuses its authenticated result for an unchanged contract. |
+| Modify an inherited proof artifact | `ordinary-lake-build-rejects-modified-dependency` in `attacks_rejected` | The ordinary build fails and replaces a prior success result with failure. |
+| Change a source dependency | The old lock is rejected; `dependency_update_kernel_replays: 1` follows explicit selection of the new publication | Updating source identity requires a deliberate consumer choice and new admission in this profile. |
+
+The [validation account](VALIDATION.md) explains the other hostile fixtures,
+their decisive checks and their limits. Result entries are reports of an
+execution; a transferred report cannot stand in for the receiver's own check.
+
+## Interpreting the timings
 
 The runner also measures a plain Lake build of the provider source, its warm
 cache, content-and-credit checking, cold/warm notary admission, warm ordinary

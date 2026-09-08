@@ -5,12 +5,48 @@ components. A provider signature records credit, not mathematical endorsement.
 Anyone can supply the same valid component. Lean receives the actual published
 theorem, never a new axiom justified by a signature.
 
-The first integrated case is Erdős Problem 848, with provider credit assigned to
+## Start with the standalone exchange
+
+The [small reference example](REFERENCE.md) publishes tree theorems, uses them
+in a round-trip package, and uses that package's conclusions in a further
+application. It demonstrates separately certified declarations, nested
+publication, fresh proof admission, unchanged local reuse and rejection of
+tampered dependencies by the consumer's ordinary `lake build`. It requires no
+large archive, mathlib cache, registry account or private orchestration service.
+
+Ordinary Lean imports and environment replay already enable reuse and checking.
+This layer specifies how a selected declaration, its original proof material,
+logical foundation, dependency publications and provider credit stay bound
+together across releases. Consumers retain their own selection and acceptance
+state. The [comparison with existing tools](RELATED_WORK.md) explains this
+boundary; it also identifies the additional evidence needed to establish a
+workflow or performance advantage.
+
+See the [normative profile](SPEC.md), [reproduction guide](REFERENCE.md), and
+[validation mechanisms and limits](VALIDATION.md). The checked composition
+model assumes sound local checking and complete binding; it is not a formal
+verification of the runtime. Separate operator/platform reproduction, automatic
+conversion of arbitrary Lake package graphs, an open untrusted-upload service
+and declaration-level incremental checking remain further work.
+
+The purpose of this reference is to make the engineering gap and proposed
+contract reviewable. Feedback on the implementation's correctness and on the
+best future Lake/mathlib integration is welcome; that integration design is
+still open.
+
+## Larger case: the archived Erdős Problem 848 formalization
+
+The archive adapter imports an all-N extremal bound from a published
+formalization of Erdős Problem 848, concerning sets whose pair products plus
+one are nonsquarefree. Its provider credit is assigned to
 **Alex Chengyu Li**. The component records the exact public source commit,
 theorem, source/compiled-artifact manifests, allowed logical foundations, and
 the historical kernel-verification record.
 
-## Scope of this implementation
+The following instructions concern this archive adapter. Use the standalone
+guide above for a first trial of the general protocol.
+
+### Scope of the archive adapter
 
 - Ed25519 credit signatures, domain-separated component IDs, and verification.
 - An immutable public registry entry, `erdos848.component.json`.
@@ -23,14 +59,6 @@ the historical kernel-verification record.
   consumer of the real `Erdos848.PaperGeneratedCertificateProvider.all_N`.
 - `#notary_info` for showing credit and provenance beside the actual Lean type.
 
-The historical #848 adapter is accompanied by a declaration-exchange reference
-profile: generic selected-theorem export, a separate data-only admission checker,
-consumer locks and receipts, and three-project default Lake integration.
-See the [normative profile](SPEC.md), [reproduction guide](REFERENCE.md), and
-[contribution/prior-work analysis](RELATED_WORK.md). A controlled depth example
-also exports two independently certified theorems from each of eight modules.
-An open untrusted-upload service, portable incremental checking and registry
-servers remain future work.
 The checked-in signed record is public registry data and can be served by GitHub
 or any byte-preserving mirror. It grants no new mathematical authority to that
 server or to the provider.
@@ -147,8 +175,10 @@ selects the actual theorem and records its structural Lean expression and univer
 parameters. Shared module bytes are recorded once per realization; separate
 conclusions have distinct certificate IDs and independently transferable credit.
 
-The controlled real-kernel example builds eight import layers, two theorems per
-module (16 signed certificates), and checks both final conclusions. It also
+The controlled real-kernel example builds eight import layers, preserving
+separate certificates for both theorems in each module and checking both final
+conclusions. This tests repeated wrapping to that depth; the general reference
+example above additionally tests actual use of inherited theorems. It also
 changes every intermediate compiled module and attempts sorry, hidden-axiom,
 wrong-proof and axiom-as-theorem attacks. Its generated keys identify test
 providers, not Alex. Run it through the separate receipt policy:

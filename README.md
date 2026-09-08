@@ -1,10 +1,64 @@
-# mathlib4
+# Theorem Notary
 
-This fork develops a **Glass Box theorem notarization layer**. Its first case is
-the external import of Erdős #848 with publicly verifiable provider credit for
-Alex Chengyu Li. See [the implementation and build guide](Notary/README.md) and
-[the protocol](docs/THEOREM_NOTARY_PROTOCOL.md). Provider credit adds no axioms
-and is not mathematical endorsement. The upstream mathlib README follows.
+A **Glass Box protocol and Lean reference implementation** for publishing and
+reusing kernel-checked theorems across independently maintained projects.
+
+As AI-assisted proof development expands, completed formalizations still need
+to be selected, checked and maintained as dependencies. A receiving project
+needs to know which exact statement, proof data, logical assumptions and
+inherited dependencies it is accepting, and when an earlier check remains
+applicable. Theorem Notary makes that handoff an executable publication and
+admission contract.
+
+Ordinary Lean imports and environment replay already provide the underlying
+proof reuse and checking machinery. This prototype binds each selected theorem
+to its inspectable proof material and dependency publications, records provider
+credit, and makes consumer-controlled admission part of an ordinary Lake build.
+A signature attributes supply to a key; the consumer checks the actual proof.
+Proofs, definitions and dependencies remain available for inspection and replay:
+this is the **Glass Box** boundary. See the
+[comparison with existing tools](Notary/RELATED_WORK.md).
+
+## Try the small theorem exchange first
+
+Start with the [standalone reproduction guide](Notary/REFERENCE.md). Its tree
+example demonstrates the complete handoff:
+
+- A provider publishes separate proofs that mirroring twice restores a tree
+  and that mirroring preserves its leaf count.
+- A consumer uses those theorems to prove properties of a round-trip operation;
+  a further application uses the consumer's conclusions in its own proofs.
+- Changing inherited proof bytes fails the consumer's ordinary `lake build`.
+  A fresh consumer checks the proof; unchanged local acceptance can be reused.
+
+The example needs the pinned Lean toolchain, Python and Node.js. It needs no
+mathlib cache, large proof archive, registry server or private infrastructure.
+The guide includes commands, expected results and the boundary of the recorded
+same-machine reproduction.
+
+## Protocol and evidence
+
+- [Normative exchange and admission profile](Notary/SPEC.md)
+- [Validation mechanisms, observed results and limitations](Notary/VALIDATION.md)
+- [Protocol paper](https://doi.org/10.5281/zenodo.22658049)
+- [Implementation overview and large archived theorem case](Notary/README.md)
+
+This is a working reference prototype pinned to Lean `v4.30.0-rc2`. Independent
+operator/platform reproduction and automatic integration with arbitrary Lake
+package graphs remain follow-up work. Fresh proof checking still has a cost;
+the current measurements do not establish a speed advantage over an existing
+workflow with equivalent assurance.
+
+Design feedback is welcome on the proposed handoff contract, defects or missing
+checks in the reference implementation, and the right integration boundary with
+Lake and mathlib. The prototype makes the basic protocol idea executable;
+deployment hardening and an upstream integration proposal require further design.
+
+The implementation is hosted in a mathlib fork. Its archived Erdős Problem 848
+adapter is a separate, larger case; the small example does not require it.
+The upstream README and its upstream CI badges follow.
+
+# Upstream mathlib4
 
 ![GitHub CI](https://github.com/leanprover-community/mathlib4/actions/workflows/build.yml/badge.svg?branch=master)
 [![Bors enabled](https://raw.githubusercontent.com/bors-ng/bors-ng.github.io/refs/heads/master/images/badge_small.svg)](https://mathlib-bors-ca18eefec4cb.herokuapp.com/repositories/16)
