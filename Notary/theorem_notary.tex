@@ -21,28 +21,28 @@
 \maketitle
 \begin{abstract}
 AI-assisted mathematics needs completed formal proofs to become dependable
-inputs to further research. Even after a theorem is proved, an independent
-consumer must identify its exact statement and assumptions, obtain its proof
-dependencies, and establish which checks remain valid through later reuse.
-Existing package imports and proof checkers provide essential mechanisms;
-successive publications also need a shared contract for carrying these choices
-forward. We propose Theorem Notary, a Glass Box protocol for a growing network
-of independently published theorem components. Each eligible theorem has a
-complete proof checkable by the kernel, the proof assistant's logical core,
-under a disclosed foundation. Its certificate binds the full statement,
-definitions, source and proof data, and inherited publications. Publicly inspectable
-proof material supplies the Glass Box justification; provider signatures record
-supply without adding logical authority. Consumers select exact identities,
-check every inherited certificate, and reuse only their own authenticated
-acceptance for an unchanged checking scope. Derived results enter the same
-publication cycle. A Lean reference profile specifies these boundaries and
-their build integration. Evaluation combines actual theorem consumption across
-independent project boundaries with a large archived formalization and attacks
-on statement identity, inner proof obligations, and acceptance reuse. The
-protocol makes completed proofs and valid acceptance reusable inputs to new
-derivations. It supports cumulative formal knowledge across independently
-maintained repositories, providing an admission contract for subsequent human
-and automated mathematical development.
+inputs to further research. A project reusing a theorem must preserve its exact
+statement, assumptions, and proof dependencies, and determine which completed
+checks remain valid as other projects build on it. We propose Theorem Notary,
+a protocol for publishing and reusing independently developed theorem
+components. Its \emph{Glass Box} design lets a project use a theorem through its
+stated interface while keeping the complete proof, definitions, dependencies,
+and foundational axioms publicly available for inspection and checking. The
+``box'' is the reusable interface; the ``glass'' is continued access to the
+logical justification behind it. Eligible proofs are complete and checkable
+by the kernel, the proof assistant's logical core, under the permitted
+foundational axioms. A certificate binds each theorem to that precise material;
+provider signatures record who supplied it. Receiving projects check the
+inherited certificates and retain authenticated records of their own checks.
+They can reuse those records when the bound inputs and checking conditions
+remain unchanged. New theorems enter the same publication cycle. A reference
+implementation for the Lean proof assistant specifies the checks and integrates
+them into project builds. Evaluation follows actual theorem use across
+independent projects, examines a large archived formalization, and attempts
+statement substitution, concealment of dependencies, and forgery of prior
+checking results. The protocol supplies a common publication and acceptance
+contract through which completed proofs support cumulative human and automated
+mathematical development.
 \end{abstract}
 
 \section{Cumulative mathematics across independent projects}
@@ -50,7 +50,9 @@ and automated mathematical development.
 A completed formal proof should become a dependable starting point for the
 next mathematical discovery. Consider a researcher who finds a useful lemma
 in another group's formalization, proves a new theorem with it, and publishes
-the result for a third group. Each handoff must preserve the precise lemma,
+the result for a third group. We call the group supplying a component its
+\emph{provider} and a project using it a \emph{consumer}; the second group plays
+both roles. Each handoff must preserve the precise lemma,
 the definitions and assumptions that give it meaning, and the evidence needed
 to check it. If those choices remain specific to each project's release and
 build arrangements, later users must reconstruct them. The proof is complete,
@@ -67,7 +69,8 @@ lemmas as well as exceptionally expensive proofs.
 
 \subsection{The gap between an import and a reusable publication}
 
-Lean already supports reuse through external packages and module imports.
+Lean, a proof assistant for constructing and checking formal proofs, already
+supports reuse through external packages and module imports.
 Lake, its package and build tool, supports pinned dependencies and cached build
 artifacts~\citep{lake}. Independent packages already coexist with mathlib,
 Lean's community mathematical library. These mechanisms are the starting point. The
@@ -89,25 +92,34 @@ A distributed knowledge base needs a reusable publication boundary alongside
 that valuable shared foundation.
 
 Proof construction produces proof objects that subsequent research can use.
-Lean's replay utility can validate an environment by sending its declarations
-back to the kernel~\citep{leanreplay}. Recording the exact checked objects and
-checking scope makes this completed work available to later builds: theorem
-proofs can be imported, and a consumer's still-valid acceptance can be reused.
+Lean's replay utility sends compiled definitions and theorems back through
+the kernel, its logical checking core~\citep{leanreplay}. Recording the exact checked objects, checking software, and permitted axioms
+makes this completed work available to later builds: theorem proofs can be
+imported, and a consumer's record of a still-valid check can be reused.
 An unchanged accepted component remains a usable input as new results are
 developed around it. The engineering task is to preserve this accumulated work
 and make changes to its basis explicit, so proof development can focus on the
 new argument.
 
-\subsection{Glass Box publication and repeated derivation}
+\subsection{Glass Box: an interface with an inspectable proof}
 
-Theorem Notary makes each eligible theorem a separately identifiable component.
-Its public interface contains the full statement, including hypotheses; its
-justification contains inspectable definitions, proof data, and dependencies.
-This is the Glass Box relationship: a client uses the theorem as an interface,
-while the kernel, the proof assistant's logical core, can check why it holds.
-Eligible components are Kernel-Only: their proofs are complete under a
-disclosed, permitted foundation, with no extra unproved theorem admitted as an
-axiom. Signing supplies no missing proof.
+Like a software package, a theorem component gives its users an interface:
+the exact proposition they may use, including its hypotheses. They can apply
+it in a new argument without reconstructing its proof. The complete proof,
+definitions, recursively used dependencies, and foundational axioms remain
+publicly available, so the kernel can check the justification behind that
+interface. We call this relationship \emph{Glass Box}: the box provides the
+abstraction, and the glass preserves access to its logical interior. Routine use depends on the checked proof behind the interface.
+The mathematical engineering layer introduced this inspectable-component
+principle~\citep{engineering}; the present protocol specifies how independent
+projects publish, select, check, and republish such components.
+
+Theorem Notary makes each eligible theorem separately identifiable. Eligible
+components are \emph{Kernel-Only}: their proofs are complete under disclosed,
+permitted foundational axioms, with every additional theorem obligation
+proved.
+We call the consumer's check that a component meets its chosen requirements
+\emph{admission}, and a successful decision \emph{acceptance}.
 
 A certificate binds that interface to fixed source and proof data and to its
 dependency publications. Any eligible auxiliary lemma can have its own
@@ -115,17 +127,18 @@ certificate, even when it shares proof files with other conclusions. A
 consumer selects exact certificate identities in a lock, a record of its
 chosen inputs, and performs admission against them. A derived theorem receives
 a new certificate retaining those inherited identities. The next consumer
-applies the same rule to the whole publication chain, including inner
-certificates unused by its chosen outer theorem. The output of one accepted
+applies the same rule to the whole publication chain. The output of one accepted
 project can thus become an explicit input to another publication cycle.
 
-Provider credit identifies the key supplying a component. Anyone may provide
+\emph{Provider credit} is a signed supply record: it identifies the key used
+to supply a component. Anyone may provide
 one, and several providers may supply the same component; this attribution adds
 no logical authority. Each consumer checks the proof basis or reuses its own
-authenticated acceptance for an unchanged checking scope. Registries and
-mirrors support discovery and distribution while acceptance remains with the
-receiving project. The protocol standardizes these boundaries; its reference
-implementation demonstrates a concrete Lean profile and build integration.
+authenticated acceptance. Here the \emph{checking scope} is the precise material,
+checker, and logical policy covered by that decision; reuse requires them to
+remain unchanged. Registries index publications, and mirrors distribute copies,
+while acceptance remains with the receiving project. The reference implementation
+in Section~\ref{sec:lean} demonstrates these rules in Lean and ordinary project builds.
 
 \subsection{Why this matters for mathematical iteration}
 
@@ -152,7 +165,7 @@ engineering layer~\citep{engineering}.
 
 The technical question is how to preserve that basis under substitution,
 nested publication, and reuse of earlier acceptance. Sections~2--5 specify
-the objects, admission procedure, composition argument, and Lean profile.
+the objects, admission procedure, composition argument, and Lean implementation.
 Section~6 follows actual derivation across projects before examining a large
 archived component. Section~7 tests adversarial changes and reports checking
 costs. Section~8 compares existing mechanisms and states what further evidence
@@ -167,16 +180,6 @@ chooses the component it intends to use and applies its own acceptance policy.
 One person may play several roles, and several providers may supply the same
 component. Registry membership and provider reputation are not premises of
 the mathematical acceptance rule.
-
-Glass Box describes the relationship between an interface and its
-justification. Like a software package, a theorem component offers an interface
-that a client can use without reproducing the implementation. Here the
-interface states a proposition, and the implementation includes its proof.
-The client can reason with the exported theorem while its justification remains
-available for inspection: the proof objects, the meanings of referenced
-constants, all recursively referenced dependencies, and the declared logical foundation. The
-kernel checks that justification. A provider's claim that the interface works
-supplies no proof.
 
 The admissible components are \emph{Kernel-Only}: exported statements have
 complete proof objects checkable by the named kernel under an explicitly
@@ -197,12 +200,15 @@ assumes the desired result into closure of that result. A certificate preserves
 this distinction by binding the full type; relevance and correspondence to the
 intended mathematical problem remain separate judgments.
 
-The protocol uses the objects in Table~\ref{tab:objects}. A \emph{proof
+The protocol uses the objects in Table~\ref{tab:objects}. In Lean, a
+\emph{declaration} is a named definition, theorem, or axiom; a \emph{module}
+is a compiled unit of declarations corresponding to a source file.
+A \emph{proof
 realization} is a fixed collection of source and proof data under a named
 checking profile, which specifies how the component is to be checked.
 A \emph{declaration certificate} selects an actual theorem
 within that realization and records its full interface. The interface includes
-the declaration name, type expression, universe parameters describing levels
+the declaration name, type expression (the formal representation of the statement), universe parameters describing levels
 in Lean's hierarchy of types, and the identity of the environment that gives its referenced constants meaning. Interface comparison uses these structural fields even when display formulas
 coincide.
 
@@ -231,8 +237,9 @@ conclusions from one publication and later publish new conclusions that use
 them. The identity of the publication container does not determine the
 granularity of mathematical reuse.
 
-Object identities are content digests computed from a unique byte representation
-with a different prefix for each object kind. A parent realization binds both the realization identities and the
+Object identities are cryptographic content digests: fingerprints computed
+from the object's exact bytes. Each object has a unique byte representation
+with a different prefix for each kind. A parent realization binds both the realization identities and the
 certificate identities of its dependency publications. Binding only a package
 identity would leave the selection of its exported interfaces underspecified.
 Credit lists are outside mathematical identity, so adding another valid
@@ -257,7 +264,11 @@ the choice of theorem and the conditions for using it. The architecture makes
 that division executable. Table~\ref{tab:architecture} assigns an input, output,
 and acceptance obligation to each stage. A \emph{publication bundle} is the
 transport object containing a realization, its declaration certificates and
-credits, and the inherited publications. The receiver can inspect those public
+credits, and the inherited publications. The implementation calls the
+realization's content identity a \emph{bundle ID}; the certificates and credits
+carried in the transport envelope are checked separately. Thus the realization,
+the theorem selected from it, and the record of its supplier have distinct
+identities. The receiver can inspect those public
 objects without a provider account or a private registry response.
 
 \begin{table}[ht]
@@ -324,8 +335,10 @@ The inputs are a received bundle, an independently selected consumer lock, a
 supported checking profile and consumer-controlled local state. Admission
 processes the complete finite publication closure, meaning all publications
 reachable through its dependency bindings. Shared components may be checked
-once by identity. Every declared certificate remains covered, including an
-inner conclusion that the chosen outer theorem does not use.
+once by identity. Acceptance covers every certificate advertised by those
+publications, including an inner conclusion that the chosen outer theorem
+does not use. Otherwise, a valid outer proof could carry an unchecked inner
+claim into the accepted collection.
 
 A conforming admission procedure performs the following checks in order:
 \begin{enumerate}
@@ -380,8 +393,8 @@ replay. A changed proof, interface, foundation or checker invalidates the
 matching record and requires the appropriate new selection or fresh check.
 
 The accepted files must remain stable between checking and use. The reference
-runner acquires an exclusive admission lease and rechecks bytes before sealing
-success. The lease coordinates cooperating local runs; storage controlled by
+runner acquires an exclusive admission lease, a lock coordinating cooperating
+local runs, and rechecks bytes before sealing success. Storage controlled by
 an attacker requires a read-only snapshot or equivalent protection. Similarly,
 a digest records which executable was checked but does not prevent that
 executable from being replaced afterwards. The deployment preserves the
@@ -395,7 +408,12 @@ identities again, so the next consumer can execute the same contract.
 \vspace{0pt}\Needspace{20\baselineskip}
 \section{Composition and the security boundary}
 
-The composition argument separates logical validity from object binding.
+The composition argument explains why repeated publication preserves a valid
+mathematical basis. If the foundational claims are valid and each checked local
+inference preserves validity from its declared dependencies, then every claim
+reached by finitely many such steps is valid. The argument applies regardless
+of how many providers occur along the chain. It separates this logical property
+from the mechanisms that bind a received object to the claim actually checked.
 
 \begin{proposition}[Composition]
 % formal-claim-begin: composition
@@ -431,6 +449,10 @@ a parser, kernel implementation, signature library, or filesystem. The Lean
 companion supplied with the reference implementation (Section~\ref{sec:lean})
 states this same abstract induction theorem explicitly; applying it
 to an implementation retains those implementation assumptions.
+
+For the following two propositions, $C$ is the claim type and $Q$ the credit
+type. The predicate $A$ describes mathematical acceptance of a claim, and
+$V$ describes validity of a credit, such as successful signature verification.
 
 \begin{proposition}[Credit independence]
 % formal-claim-begin: credit-independence
@@ -484,10 +506,11 @@ consumer-selected.
 \label{sec:lean}
 
 The reference profile fixes Lean 4.30.0-rc2 and supplies an export/admission
-library, command-line operations and a default Lake target. Lake is Lean's
+library, command-line operations and a default Lake target. Its public code and
+specification are at \url{https://github.com/crabsatellite/mathlib-theorem-notary}.
+Lake is Lean's
 project build tool; the default target is the operation run by an ordinary
-\texttt{lake build}. The code and normative specification are located in the
-\hyperref[sec:artifacts]{artifact availability statement}. This section gives
+\texttt{lake build}. This section gives
 the technical construction that implements Section~\ref{sec:admission}.
 
 \subsection{Encoding and cross-object commitments}
@@ -530,7 +553,9 @@ retains referenced constants and binder information; the bundle fixes the
 definitions that give those constants meaning. Source and proof paths are
 relative to the bundle, and each has an exact digest. The profile binds the
 compiled module data, including exported, server and private proof-data parts
-when present, so a hidden part cannot supply an unlisted dependency.
+when present. The names distinguish compiler file categories, and every present part
+is included in the public component. Binding every part prevents
+an omitted part from supplying an unlisted dependency.
 Compiled realizations are version-specific; profile migration requires an
 explicitly justified new realization.
 
@@ -539,11 +564,12 @@ explicitly justified new realization.
 The checker starts as a separate process with trusted search paths. It first
 loads its own checking code and the official foundation. Only then does it
 introduce the supplied proof-data directory. Before launch, the runner rejects
-supplied modules that would shadow installed toolchain modules. The checker
+supplied modules that would shadow installed toolchain modules, meaning replace
+them during name-based loading. The checker
 disables imported extensions and provider plugins, reads proof data, and replays
 declarations into a fresh kernel environment. Thus the provider's code cannot
 obtain a successful admission merely by printing the expected output or
-running a module initializer.
+running a module initializer, code normally executed when a module loads.
 
 To preserve each publication's original proof realization, the checker also
 compares the declaration records retained in the individual imported modules.
@@ -564,8 +590,8 @@ installation. Uncontrolled paths, missing modules and conflicting data fail.
 
 Coverage is also checked within each inherited realization. The checker retains
 the original module origins of reachable constants, including dependencies
-through field projections, mutually defined inductive types and their
-recursors, the rules for eliminating inductive values. For each
+through operations selecting structure fields, jointly defined recursive data
+types, and their recursors, the rules for analysing values of those types. For each
 such constant, at least one identical original occurrence must belong to that
 certificate's realization or the trusted installation. Multiple identical
 origins are alternatives, so import order does not assign arbitrary ownership.
@@ -707,7 +733,7 @@ The large-component case has a narrow theorem interface backed by 30,638
 project modules and about 121 GiB of unpacked proof data. It uses an archived
 formalization of the exact extremal bound in Erdős Problem 848. The result
 concerns the maximum size of
-$A\subseteq\{1,\ldots,N\}$ for which $ab+1$ is nonsquarefree for every
+$A\subseteq\{1,\ldots,N\}$ for which $ab+1$ is nonsquarefree, meaning divisible by the square of a prime, for every
 $a,b\in A$, including $a=b$; its exact bound for positive $N$ is
 \mbox{$\lfloor(N+18)/25\rfloor$}~\citep{erdos848}. The protocol experiment uses this existing formal result as a publication
 case; its contribution concerns the handoff of the proved statement.
