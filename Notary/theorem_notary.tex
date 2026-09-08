@@ -20,132 +20,143 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-Formal proof libraries support theorem reuse, while independently maintained
-projects must also preserve which exact statement, proof data, and logical
-assumptions they have selected. We propose Theorem Notary, a mathematical
-engineering protocol for this publication boundary. Its Glass Box interface
-makes a theorem usable as a component while keeping its proof, definitions,
-and dependencies available for inspection and checking by the kernel, the proof assistant's logical core. The architecture
-separates provider assembly, immutable publication, consumer-controlled
-proof admission, and local acceptance reuse. A certificate binds one declaration to
-fixed source and proof data; a consumer lock fixes the selected identities.
-Provider signatures attribute supply. Admission validates the actual proof
-objects and every inherited certificate under a disclosed foundation.
-A concrete Lean profile specifies the encoding, dependency bindings, data-only
-checking process, authenticated local records, and build-failure behavior.
-We explain the assurance supplied by each stage and give an abstract composition
-argument. Evaluation combines a large archived formalization containing over
-30,000 modules and about 121 GiB of unpacked proof data with a fresh three-project
-case in which later proofs consume separately certified conclusions.
-Adversarial evaluation attempts to substitute statements under valid signatures,
-conceal inner proof obligations, and forge consumer acceptance. Each attempt
-is tied to the check that detects or prevents it. The protocol gives successive consumers an executable contract for
-preserving exact theorem identity, supply attribution, and checking scope.
-This supports the accumulation of reusable formal components as AI-assisted
-research increases demand on formalization and review.
+AI-assisted mathematics needs completed formal proofs to become dependable
+inputs to further research. Even after a theorem is proved, an independent
+consumer must identify its exact statement and assumptions, obtain its proof
+dependencies, and establish which checks remain valid through later reuse.
+Existing package imports and proof checkers provide essential mechanisms;
+successive publications also need a shared contract for carrying these choices
+forward. We propose Theorem Notary, a Glass Box protocol for a growing network
+of independently published theorem components. Each eligible theorem has a
+complete proof checkable by the kernel, the proof assistant's logical core,
+under a disclosed foundation. Its certificate binds the full statement,
+definitions, source and proof data, and inherited publications. Publicly inspectable
+proof material supplies the Glass Box justification; provider signatures record
+supply without adding logical authority. Consumers select exact identities,
+check every inherited certificate, and reuse only their own authenticated
+acceptance for an unchanged checking scope. Derived results enter the same
+publication cycle. A Lean reference profile specifies these boundaries and
+their build integration. Evaluation combines actual theorem consumption across
+independent project boundaries with a large archived formalization and attacks
+on statement identity, inner proof obligations, and acceptance reuse. The
+protocol makes completed proofs and valid acceptance reusable inputs to new
+derivations. It supports cumulative formal knowledge across independently
+maintained repositories, providing an admission contract for subsequent human
+and automated mathematical development.
 \end{abstract}
 
-\section{From understanding a theorem to handing it on}
+\section{Cumulative mathematics across independent projects}
 
-A mathematician considering an external theorem has good reasons to begin
-with its statement and proof. The quantifiers must match the intended problem,
-the definitions must express the intended objects, and the axioms must be
-acceptable for the intended use. Reading the argument also supplies ideas that
-can guide a new proof. These judgments remain central when a formal proof is
-available. A publication protocol should preserve the researcher's ability to
-make them and make their consequences reliable in subsequent work.
+A completed formal proof should become a dependable starting point for the
+next mathematical discovery. Consider a researcher who finds a useful lemma
+in another group's formalization, proves a new theorem with it, and publishes
+the result for a third group. Each handoff must preserve the precise lemma,
+the definitions and assumptions that give it meaning, and the evidence needed
+to check it. If those choices remain specific to each project's release and
+build arrangements, later users must reconstruct them. The proof is complete,
+yet making it a durable input to new research remains engineering work.
 
-Ordinary formal imports already provide the logical step of reuse. A theorem
-proved in an external Lean project can participate in a downstream proof;
-Lean's replay utility can additionally validate an environment by sending its
-declarations back to the kernel~\citep{leanreplay}. A careful maintainer can
-pin dependencies, inspect actual axiom dependencies, and maintain a controlled
-build. The case for a further protocol begins when an accepted result must
-travel between projects whose maintainers make these decisions separately.
+This work becomes more consequential as AI assists with producing mathematical
+arguments and formal proofs. More candidate results create more demands for
+formalization, interpretation, and validation. Repeatedly recovering the basis
+of already completed work competes with proving the new part. A scalable
+research process needs a growing body of results that humans and automated
+systems can select precisely, check, extend, and publish again. The problem is
+therefore cumulative knowledge across project boundaries, including ordinary
+lemmas as well as exceptionally expensive proofs.
 
-Consider a first researcher who publishes a theorem, a second who imports it
-and proves two new lemmas, and a third who needs one of those lemmas. At the
-first handoff, the collaborators may agree directly on a source version,
-statement, and checking basis. At the next handoff, the third researcher needs
-to recover what was actually selected and which parts of that basis remain
-applicable. If an inner component changes, someone must decide whether to
-retain the earlier source and proof data or adopt the replacement. A successful build
-answers a logical question within its current environment; the research
-collaboration also needs an explicit account of what that environment is
-supposed to preserve.
+\subsection{The gap between an import and a reusable publication}
 
-The distinction matters even when every proof is valid. A statement about all
-positive integers and one about sufficiently large integers can both have
-correct proofs under the same axioms. A printed expression can also retain a
-familiar predicate name while the definition behind that name changes. With
-an unchanged, fully specified downstream goal, the kernel rejects an invalid
-inference from a replacement. When definitions, goals, or publication choices
-change together, kernel checking establishes correctness of the resulting
-formal development. Determining whether it is still the result previously
-chosen requires comparing its identity and interpretation. The axiom list
-answers which logical assumptions a proof uses; it leaves this continuity
-question to the surrounding workflow.
+Lean already supports reuse through external packages and module imports.
+Lake, its package and build tool, supports pinned dependencies and cached build
+artifacts~\citep{lake}. Independent packages already coexist with mathlib,
+Lean's community mathematical library. These mechanisms are the starting point. The
+remaining task is to carry a common theorem-level acceptance contract through
+successive independent publications: exactly what was selected, which proof
+and dependencies justify it, and which changes require checking again.
 
-Human review and identity checking therefore have complementary jobs. The
-researcher decides that a precise statement is relevant and that its foundation
-is suitable. The protocol records which formal realization, the concrete source and proof data, was selected.
-It makes replacement visible and enforces the consumer's declared conditions
-for accepting the component during use. A later change can be evaluated as a new choice. This makes a careful
-judgment actionable after the original conversation has ended. Interpreting
-the theorem remains a mathematical task, including checking its correspondence
-to the informal problem.
+Without such a contract, the receiving maintainer supplies the missing
+agreements. They locate a compatible release, determine which declarations
+and assumptions matter, recover the relevant checking evidence, and configure
+how later builds preserve that choice. A downstream publisher must then make
+these decisions intelligible to another consumer. Source copying and full
+rebuilds can occur when suitable packaging or accepted artifacts are absent;
+external package dependencies avoid copying but still leave the acceptance
+policy to the collaboration. A shared library can consolidate maintenance and
+review, but admitting all independently developed specialist components there
+would also assign their integration and continuing upkeep to its maintainers.
+A distributed knowledge base needs a reusable publication boundary alongside
+that valuable shared foundation.
 
-Direct import can be accompanied by all of these measures. A team can maintain
-exact dependency locks, proof and source inventories, declaration-level
-assumption policies, authenticated attribution, and rules for reusing earlier
-checks. Such a workflow already performs the work addressed here. A common
-protocol gives those measures a shared meaning at the next handoff: which
-object was selected, what a check covered, and which changes require a fresh
-acceptance check. In a stable project under one maintainer, an established import
-workflow may be sufficient. The protocol addresses repeated publication and
-reuse across independently maintained projects, where otherwise each boundary
-must reconstruct these agreements.
+Proof construction produces proof objects that subsequent research can use.
+Lean's replay utility can validate an environment by sending its declarations
+back to the kernel~\citep{leanreplay}. Recording the exact checked objects and
+checking scope makes this completed work available to later builds: theorem
+proofs can be imported, and a consumer's still-valid acceptance can be reused.
+An unchanged accepted component remains a usable input as new results are
+developed around it. The engineering task is to preserve this accumulated work
+and make changes to its basis explicit, so proof development can focus on the
+new argument.
 
-AI-assisted research gives this coordination problem particular urgency.
-Producing a candidate statement or argument leaves the work of constructing a
-complete formal proof, checking its intended meaning, and deciding how it can
-be used. As candidate production expands, these tasks can become the limiting
-capacity. An effective workflow must concentrate that capacity on the new
-argument while making completed formalizations available for further work.
-Ordinary imports already make such reuse possible within compatible projects.
-The additional engineering task is to preserve an explicit, inspectable basis
-for that reuse as components pass between maintainers and automated consumers.
-A protocol serves this task by making the conditions of reuse executable.
+\subsection{Glass Box publication and repeated derivation}
 
-Theorem Notary expresses this contract through per-declaration certificates.
-Each certificate binds a theorem's full interface, its proof realization, and
-its dependencies. A consumer lock fixes the exact identities that the consumer
-has chosen. Admission then checks the supplied proof data and its inherited
-certificates against those choices. Publicly inspectable proof material,
-definitions, and checking conditions give the contract its Glass Box character.
-The chain can grow while each consumer retains an explicit basis for deciding
-what to accept.
+Theorem Notary makes each eligible theorem a separately identifiable component.
+Its public interface contains the full statement, including hypotheses; its
+justification contains inspectable definitions, proof data, and dependencies.
+This is the Glass Box relationship: a client uses the theorem as an interface,
+while the kernel, the proof assistant's logical core, can check why it holds.
+Eligible components are Kernel-Only: their proofs are complete under a
+disclosed, permitted foundation, with no extra unproved theorem admitted as an
+axiom. Signing supplies no missing proof.
 
-Two records remain distinct throughout. Provider credit identifies the key
-that supplied a component. Mathematical acceptance records the consumer's
-check of the actual formal object under a disclosed foundation. Anyone can
-supply a component; acquiring a signature never creates a new logical premise.
-A fresh consumer performs its own admission, and an existing consumer can reuse
-its own authenticated record for an unchanged checking scope. What travels
-between researchers is a fully specified publication and its inspectable proof
-basis. The decision to accept it remains with the receiving project.
+A certificate binds that interface to fixed source and proof data and to its
+dependency publications. Any eligible auxiliary lemma can have its own
+certificate, even when it shares proof files with other conclusions. A
+consumer selects exact certificate identities in a lock, a record of its
+chosen inputs, and performs admission against them. A derived theorem receives
+a new certificate retaining those inherited identities. The next consumer
+applies the same rule to the whole publication chain, including inner
+certificates unused by its chosen outer theorem. The output of one accepted
+project can thus become an explicit input to another publication cycle.
 
-This separation supports a useful form of mathematical specialization. One
-researcher can provide a substantial checked component; another can select an
-auxiliary lemma, build on it, and publish the resulting theorem with the
-inherited identities intact. A registry can make these publications discoverable
-without deciding their mathematical admissibility. Ordinary external imports
-supply the logical reuse mechanism; the protocol supplies a consistent contract
-for that mechanism across publication boundaries. The distinction between
-closing a proof and making a closed result durably composable motivates the
-mathematical engineering layer~\citep{engineering}. Here it becomes a concrete
-research question: how can independently published theorems retain their exact
-identity, credit, and checking basis through successive derivations?
+Provider credit identifies the key supplying a component. Anyone may provide
+one, and several providers may supply the same component; this attribution adds
+no logical authority. Each consumer checks the proof basis or reuses its own
+authenticated acceptance for an unchanged checking scope. Registries and
+mirrors support discovery and distribution while acceptance remains with the
+receiving project. The protocol standardizes these boundaries; its reference
+implementation demonstrates a concrete Lean profile and build integration.
+
+\subsection{Why this matters for mathematical iteration}
+
+A researcher or AI reading a paper may mistake ``sufficiently large integers''
+for ``all positive integers'', omit a hypothesis, or use a familiar name for a
+different definition. Once a formal statement has been matched to the intended
+result, later work can consume that exact statement and its dependencies.
+With the intended downstream goal fixed, an inference that silently drops a
+required hypothesis cannot pass kernel checking. Binding publication identities
+also makes a changed statement or definition visible across releases. This
+reduces the occasions on which each new consumer must reconstruct a theorem
+from prose; the initial correspondence between prose and formal statement
+still requires review.
+
+The long-term vision is an extensible mathematical knowledge base: accepted
+components support exploration, new proofs undergo the same admission, and
+their results become available for further exploration. Independent projects
+can contribute without a universal repository or an authoritative signer.
+Human understanding still establishes relevance, interpretation, and useful
+abstractions. The protocol makes the chosen formal basis persistent through
+subsequent machine-checked derivations. The distinction between closing a proof
+and making a closed result durably composable motivates the mathematical
+engineering layer~\citep{engineering}.
+
+The technical question is how to preserve that basis under substitution,
+nested publication, and reuse of earlier acceptance. Sections~2--5 specify
+the objects, admission procedure, composition argument, and Lean profile.
+Section~6 follows actual derivation across projects before examining a large
+archived component. Section~7 tests adversarial changes and reports checking
+costs. Section~8 compares existing mechanisms and states what further evidence
+would justify adoption and a future automated mathematical laboratory.
 
 \section{Protocol objects and participants}
 
@@ -175,6 +186,16 @@ inclusion. The foundational axioms themselves are disclosed and remain subject
 to the consumer's policy. Ordinary Lean imports already support this form of
 proof-based abstraction. The protocol preserves its inspectable justification
 across separately published components and their derived publications.
+
+Kernel-Only acceptance retains the complete theorem type. A proof of
+$P\Rightarrow P$ is a valid conditional theorem, even with no extra axioms;
+it is not a proof of $P$. Ordinary mathematical hypotheses are legitimate
+parts of an interface, and their obligations remain when the theorem is used.
+A consumer seeking $P$ must fix that goal independently and discharge the
+needed premises. Thus an axiom-clean report cannot turn an implication that
+assumes the desired result into closure of that result. A certificate preserves
+this distinction by binding the full type; relevance and correspondence to the
+intended mathematical problem remain separate judgments.
 
 The protocol uses the objects in Table~\ref{tab:objects}. A \emph{proof
 realization} is a fixed collection of source and proof data under a named
@@ -645,41 +666,9 @@ makes these responsibilities visible at the deployment boundary.
 
 \section{Publication and reuse cases}
 
-\subsection{An independently published mathematical component}
-
-The large-component case has a narrow theorem interface backed by 30,638
-project modules and about 121 GiB of unpacked proof data. It uses an archived
-formalization of the exact extremal bound in Erdős Problem 848. The result
-concerns the maximum size of
-$A\subseteq\{1,\ldots,N\}$ for which $ab+1$ is nonsquarefree for every
-$a,b\in A$, including $a=b$; its exact bound for positive $N$ is
-\mbox{$\lfloor(N+18)/25\rfloor$}~\citep{erdos848}. The protocol experiment uses this existing formal result as a publication
-case; its contribution concerns the handoff of the proved statement.
-
-The published certificate binds the actual all-$N$ declaration, its fixed
-source release, the proof archive, and the allowed foundation. Its provider
-credit names Alex Chengyu Li and a public signing key. The name is
-provider-declared; signature verification establishes key attribution, not
-independent verification of the person's identity or priority. An external
-consumer imports the original theorem and proves its own literal alias, while
-exposing the certificate's provenance and checking basis. A consumer choosing
-this result is selecting the full positive-integer range, the diagonal pairs,
-and the exact extremal bound. Reading the mathematical argument establishes
-why those features matter. The certificate binds that selection to the actual
-declaration and proof archive, so later consumers can identify the supplied
-formal result and inspect its checking history.
-
-Restoring this case required about 30 GiB of archive downloads. Its historical
-kernel archive is accepted under an explicit, immutable archive policy, and
-the new external consumer was checked separately. The experiment does not
-claim a fresh complete replay of the upstream proof under the new generic
-profile. These two assurance histories remain visible instead of being
-collapsed into one label.
-
 \subsection{Derived publications across three projects}
 
-A separate fresh-proof case tests composition without relying on the large
-historical archive. A provider defines binary trees and proves two conclusions:
+The fresh-proof case tests the full publication and reuse cycle. A provider defines binary trees and proves two conclusions:
 mirroring twice returns the original tree, and mirroring preserves leaf count.
 Each receives a declaration certificate. A second project imports both,
 packages double mirroring as a round trip, and proves that the round trip
@@ -711,6 +700,37 @@ revision, even one preserving the theorem statements, receives a new identity;
 the old lock rejects it, and an explicitly updated lock triggers new admission.
 This automated cold context is on the same physical workstation. Reproduction
 by another operator or on another platform remains a further validation step.
+
+\subsection{An independently published mathematical component}
+
+The large-component case has a narrow theorem interface backed by 30,638
+project modules and about 121 GiB of unpacked proof data. It uses an archived
+formalization of the exact extremal bound in Erdős Problem 848. The result
+concerns the maximum size of
+$A\subseteq\{1,\ldots,N\}$ for which $ab+1$ is nonsquarefree for every
+$a,b\in A$, including $a=b$; its exact bound for positive $N$ is
+\mbox{$\lfloor(N+18)/25\rfloor$}~\citep{erdos848}. The protocol experiment uses this existing formal result as a publication
+case; its contribution concerns the handoff of the proved statement.
+
+The published certificate binds the actual all-$N$ declaration, its fixed
+source release, the proof archive, and the allowed foundation. Its provider
+credit names Alex Chengyu Li and a public signing key. The name is
+provider-declared; signature verification establishes key attribution, not
+independent verification of the person's identity or priority. An external
+consumer imports the original theorem and proves its own literal alias, while
+exposing the certificate's provenance and checking basis. A consumer choosing
+this result is selecting the full positive-integer range, the diagonal pairs,
+and the exact extremal bound. Reading the mathematical argument establishes
+why those features matter. The certificate binds that selection to the actual
+declaration and proof archive, so later consumers can identify the supplied
+formal result and inspect its checking history.
+
+Restoring this case required about 30 GiB of archive downloads. Its historical
+kernel archive is accepted under an explicit, immutable archive policy, and
+the new external consumer was checked separately. The experiment does not
+claim a fresh complete replay of the upstream proof under the new generic
+profile. These two assurance histories remain visible instead of being
+collapsed into one label.
 
 \section{Adversarial evaluation and cost}
 
@@ -839,14 +859,27 @@ available, and network downloads were outside the timed operations. Successful p
 were retained during the completed evaluation; their reuse is recorded
 separately from fresh consumer admission.
 
-The result is useful acceptance reuse, accompanied by substantial initial
-checking overhead. It motivates research on checked persistent environments,
-proof-closure deduplication, and declaration-level reuse under equivalent
-assurance. Those optimizations must preserve exact bindings and coverage. A
-smaller downloadable certificate or a cryptographic signature cannot by itself
-replace the proof obligation.
+The measured reuse path preserves the earlier kernel check through an
+authenticated record and validation of its current scope. In this experiment,
+that changes the consumer's operation from replaying the environment to
+checking the bound inputs and retained decision. Fresh admission checks the
+complete supplied environment. Checked persistent environments, proof-closure
+deduplication, and declaration-level reuse are further opportunities to retain
+more completed work under the same binding and coverage requirements.
 
-\section{Relation to existing systems and implications}
+\section{Existing mechanisms and cumulative research}
+
+\subsection{What existing systems already supply}
+
+Comparator checks supplied Lean solutions against trusted challenge statements
+and their referenced definitions, enforces permitted axioms, and replays the
+solution through a kernel; its documented workflow also uses sandboxed build
+and export~\citep{comparator}. With a suitable foundation policy it can serve
+Kernel-Only admission. It overlaps the checking portion of this work. A future
+profile could use it as a backend, provided that every certificate's original
+proof realization and dependency coverage remain checked. Publication identities, provider credits, inherited
+certificate commitments, and consumer-owned acceptance reuse are the additional
+protocol objects that such a backend would serve.
 
 OpenTheory provides directly relevant precedent for packaging logical
 theories, tracking dependencies, and exporting and importing them across higher-order logic (HOL)
@@ -866,51 +899,80 @@ foundation. Conversely, a correct theorem does not by itself authenticate
 provider identity, prove source correspondence, or ensure registry
 availability.
 
-The practical gain is continuity between mathematical choice and subsequent
-use. A reader can first decide whether a theorem says what is needed, then
-select its exact publication, and finally build a new result whose inherited
-basis remains inspectable. A collaborator receiving that result obtains
-explicit objects and admission conditions in place of an implicit agreement
-with every earlier maintainer. The protocol thereby makes careful theorem
-provision a reproducible role in a larger research collaboration.
+\subsection{Integration and a falsifiable case for adoption}
 
-Adoption can begin at one publication boundary. A project may keep its ordinary
-Lean proofs and use the admission target when consuming a published component.
-Content-addressed publications can be distributed through files, repositories,
-or mirrors; a central registry adds discovery and distribution. The provider's
-credit remains visible across that distribution, and consumers continue to
-choose their own locks and checking conditions. This organization accommodates
-independent providers alongside shared libraries, with publication granularity
-at the level of each eligible theorem.
+The strongest baseline combines pinned Lake dependencies, trusted statement
+selection, kernel replay or a checker such as Comparator, explicit axiom
+policies, signed inventories, and protected records of previous checks. If a
+team already operates these with the same inherited-publication coverage, it
+already performs the relevant work. The protocol's proposed benefit is a
+common exchange and acceptance contract that the next project can consume,
+reducing the need to reconstruct and maintain those agreements separately.
+Existing tools can implement that contract; adoption need not require a new
+checker or registry.
 
-The strongest reason to adopt the protocol is a need to carry this explicit
-contract across maintainers, releases, or derived publications. An existing
-workflow that already supplies the same bindings and checks can implement the
-contract with familiar tools. The reference implementation demonstrates that
-the contract can be executed and tested. Independent consumers, further
-substantial components, and equal-assurance workflow comparisons can establish
-where standardization saves effort in practice. The current timings expose
-the cost of fresh admission and the benefit of reusing its unchanged local
-result; theorem interpretation, source correspondence and version migration
-retain their own obligations.
+An independent-consumer study can test this benefit by publishing, consuming,
+updating, and republishing the same components under both workflows. It should
+hold statement identity, axiom policy, transitive coverage, and operational
+trust assumptions fixed, then compare the configuration and manual
+reconstruction required, checking and storage costs, and diagnosis of the same
+substitution failures. The decisive observation is whether a new maintainer
+can recover and extend the selected basis with less repeated work. The current
+experiments establish the publication, derivation, and acceptance-reuse
+behavior on which this comparison can build. Measuring repeated maintenance
+work alongside checking costs would guide the choice between a dedicated
+implementation and a thin integration with existing tools.
 
-The long-term objective of a comprehensively formalized mathematical library
-makes this contract especially consequential. Such a library would give
-subsequent research a growing body of explicitly stated, checkable inputs.
-Automated iteration requires a machine to distinguish an accepted component,
-a changed realization, and a candidate still awaiting proof. Per-declaration
-publication and explicit admission make those distinctions available to a
-build process. New mathematical work can then accumulate on a disclosed basis,
-with formalization effort directed toward extending that basis. The reference
-profile establishes one part of this organization; constructing and reviewing
-the new proofs remains substantive work.
+A plausible Lake integration would make certificate selection and admission
+dependencies of the consumer's normal build, and use a controlled artifact
+store to preserve accepted inputs. The reference runner demonstrates this
+sequence for explicitly configured modules and exports. It is a prototype for
+design review and independent reproduction; adapting arbitrary Lake graphs,
+isolating hostile uploads, protecting stored artifacts, and agreeing an
+upstream interface remain engineering work. The implementation and the best
+mathlib integration are therefore questions for technical scrutiny.
 
-A theorem publication centre built on this protocol would therefore organize
-access to independently checkable mathematical components. Providers receive
-credit for making those components available. Researchers preserve control over
-which theorem and foundation enter their work. Derived publications retain
-that discipline at every handoff, allowing the output of one proof project to
-become an explicit, inspectable input to the next.
+Shared libraries retain their role in common definitions, interoperability,
+review, and maintenance. Independent certificate publication lets specialist
+components participate without requiring their integration into mathlib.
+Providers retain responsibility for component maintenance, while mathlib's
+human review governs admission to that shared library. Per-theorem
+selection also leaves the required proof closure intact. The current profile
+binds module data and replays its supplied environment; minimal theorem-only
+downloads and shared persistent checking across independent consumers are
+further optimizations. A registry may index publications and mirrors may
+distribute them, while each consumer retains its own admission decision.
+
+\subsection{A basis for iterative automated research}
+
+In the proposed long-term organization, a knowledge-base entry would expose
+an exact formal statement, its definitions and hypotheses, the permitted
+foundation, its proof realization, and inherited certificate identities. Search
+systems could suggest entries using natural-language descriptions, while a
+proof-producing agent would have to apply the exact formal interfaces. A
+description could be mistaken without thereby authorizing a false formal
+inference. This gives retrieval and mathematical acceptance distinct roles.
+
+The iterative cycle begins with admitted components and a fixed new goal. An
+agent explores constructions and proposes proofs using those components. A
+completed candidate undergoes kernel checking, interface and dependency
+comparison, and the same foundation policy before it can enter a new
+publication. Failed or conditional candidates remain distinguishable from a
+proof of the goal. Repetition grows a network of justified results, with supply
+credit visible at each publication and no additional logical authority gained
+from nesting. The strict boundary matters increasingly as automated consumers
+build on results produced by other automated processes.
+
+This organization could reduce repeated errors in reading mathematical
+literature: once a result's formal meaning has been reviewed, later consumers
+can reference that object with its hypotheses intact. Human and mathematical
+review establish the initial correspondence to the paper and the significance
+of the chosen goal; proof search supplies the new argument. The present
+protocol provides the publication and admission boundary around these tasks.
+Discovery, cross-version transport, efficient shared proof storage, and
+autonomous research orchestration form a further development agenda. Together
+they offer a route toward a mathematical laboratory in which completed formal
+knowledge persists as inspectable inputs to new work across independent projects.
 
 \section*{Artifact availability}
 \label{sec:artifacts}
@@ -929,6 +991,13 @@ manuscript drafting.
 The author is responsible for the protocol claims and their interpretation;
 the reported checks refer to the recorded artifact executions.
 
+\begingroup
+\small
+\setlength{\bibsep}{3pt}
 \bibliographystyle{plainnat}
 \bibliography{paper_references}
+\endgroup
+\par\medskip\noindent\small
+First publicly available: 8 September 2026. Paper archive:
+\url{https://doi.org/10.5281/zenodo.22658049}.
 \end{document}
