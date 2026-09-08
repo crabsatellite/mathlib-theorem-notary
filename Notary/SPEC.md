@@ -47,6 +47,9 @@ identical component IDs across platforms or different Lean versions.
    Source compilation runs in a publisher-owned, trusted build environment.
 2. Before issuing eligible certificates, the runner MUST read complete compiled
    proof data with imported extensions disabled and no publisher native plugins.
+   It MUST retain and compare the original per-module declaration records before
+   relying on the merged environment. Overlapping declaration names involving a
+   supplied module MUST have identical records, including theorem proof bodies.
    It MUST replay the proof environment into a fresh Lean kernel environment.
    The trusted checker MUST start without publisher search paths. The baseline
    foundation MUST be loaded only from the trusted toolchain. A supplied module
@@ -69,13 +72,24 @@ identical component IDs across platforms or different Lean versions.
    reproduction of its correspondence to readable source.
 7. A consumer MUST obtain its lock independently of the incoming package.
    `notary_cli lock` is an explicit selection operation, not implicit admission.
+   Admission MUST reject null, empty or malformed locks before accessing local
+   acceptance state. Selected certificate IDs MUST be distinct valid identities.
    Adding a valid provider credit does not update this lock or change its theorem.
 8. A consumer MUST verify the lock, complete dependency publications, source and
    proof bytes, and all credits. A new consumer MUST perform its own kernel
    admission. A publisher's signature or purported receipt cannot replace it.
    A parent binds each dependency's bundle ID **and exported certificate IDs**.
+   A dependency module MUST retain exactly the same ordered proof-data parts in
+   its parent; extending an inherited module with an unbound part is rejected.
    Kernel/type/axiom comparison covers certificates at every nesting level,
    including a nested certificate unused by a selected outer conclusion.
+   Each certificate's reachable original constants MUST be available in its
+   own realization or the trusted installation. Identical original occurrences
+   in several modules are alternative origins; at least one MUST be available.
+   This closure includes projection type names, mutual inductive definitions
+   and recursor rules. Each module's actual imports MUST also be covered by
+   that realization. Modules present only in an outer publication MUST NOT
+   discharge an inner publication's missing dependency.
 9. A consumer MAY reuse its own authenticated receipt only when object bytes,
    declaration interfaces, foundation files, checker, runner and Lean binary
    match. A stale scope triggers the explicit run-or-reuse path; a forged

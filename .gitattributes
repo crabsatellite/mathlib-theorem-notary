@@ -1,0 +1,8 @@
+# Keep evaluated protocol and paper bytes identical in working trees and archives.
+# Their raw SHA-256 inventories include line endings.
+Notary/** -text
+scripts/notary*.py -text
+scripts/theorem_notary.py -text
+scripts/test_notary*.py -text
+scripts/test_theorem_notary.py -text
+lean-toolchain -text

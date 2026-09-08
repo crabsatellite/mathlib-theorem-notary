@@ -8,14 +8,14 @@ Use the existing fork checkout and run commands from its root.
 
 ```text
 python -m pip install -r Notary/requirements.txt
-python scripts/test_notary_profile.py
-python scripts/notary_receipt.py verify --infrastructure PATH_TO_PAPER_INFRASTRUCTURE/src --policy Notary/reference.policy.json
-python scripts/notary_receipt.py run-or-reuse --infrastructure PATH_TO_PAPER_INFRASTRUCTURE/src --policy Notary/reference.policy.json
+python -m unittest discover -s scripts -p "test_*.py" -v
+python scripts/notary_reference_experiment.py
 ```
 
-Verification-only does not build. Run-or-reuse owns an exclusive execution
-lease and preserves an authenticated result for the exact contract. Results
-are written to `.notary/reference-v1/result.json`; its `evidence_directory`
+The experiment is standalone and requires no private orchestration service.
+Its admission operations acquire an exclusive local execution lease and
+preserve authenticated acceptance records. Results are written to
+`.notary/reference-v1/result.json`; its `evidence_directory`
 contains requests, checker reports, logs, public packages, and consumer locks.
 Generated private keys remain inside ignored local state and are not published.
 Do not transfer that state when testing an independent consumer.
@@ -88,8 +88,8 @@ key and provider-declared name; it is not identity verification of that name.
 ## Cold reproduction by another operator
 
 On a separately provisioned machine, obtain this implementation at an exact
-commit, install the pinned toolchain and dependencies, and run the receipt
-contract above with that machine's own Paper Infrastructure installation.
+commit, install the pinned toolchain and dependencies, and run the standalone
+experiment above. The evaluated source-byte inventory is in `reference-result.json`.
 Transfer only a public bundle and a separately obtained consumer lock. Create
 fresh acceptance state and require `kernel_replays: 1` on initial admission;
 unchanged repetition should report `kernel_replays: 0`. Never copy `host.key`

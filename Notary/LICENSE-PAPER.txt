@@ -1,0 +1,9 @@
+The manuscript theorem_notary.tex and its bibliography paper_references.bib,
+titled "Theorem Notary: A Glass-Box Protocol for Publishing and Reusing
+Kernel-Checked Theorems", are copyright 2026 Alex Chengyu Li and licensed under
+the Creative Commons Attribution 4.0 International License (CC BY 4.0).
+
+License terms: https://creativecommons.org/licenses/by/4.0/legalcode
+
+This notice applies to the paper only. The existing Apache-2.0 license and
+third-party notices continue to govern the repository's software and Lean code.

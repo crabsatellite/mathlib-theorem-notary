@@ -1,0 +1,934 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=27mm]{geometry}
+\usepackage{fontspec,amsmath,amssymb,amsthm,booktabs,tabularx,microtype}
+\usepackage[round,authoryear]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage{needspace}
+\AddToHook{cmd/section/before}{\Needspace{10\baselineskip}}
+\widowpenalty=10000
+\clubpenalty=10000
+\brokenpenalty=10000
+\setmainfont{TeX Gyre Pagella}
+\setmonofont{Latin Modern Mono}[Scale=0.86]
+\setlength{\emergencystretch}{2em}
+\newtheorem{proposition}{Proposition}
+\newcommand{\Accept}{\mathsf{Accept}}
+\newcommand{\Valid}{\mathsf{Valid}}
+\title{Theorem Notary: A Glass-Box Protocol for Publishing and Reusing Kernel-Checked Theorems}
+\author{Alex Chengyu Li\\\small Independent Researcher}
+\date{}
+\begin{document}
+\maketitle
+\begin{abstract}
+Formal proof libraries support theorem reuse, while independently maintained
+projects must also preserve which exact statement, proof data, and logical
+assumptions they have selected. We propose Theorem Notary, a mathematical
+engineering protocol for this publication boundary. Its Glass Box interface
+makes a theorem usable as a component while keeping its proof, definitions,
+and dependencies available for inspection and checking by the kernel, the proof assistant's logical core. The architecture
+separates provider assembly, immutable publication, consumer-controlled
+proof admission, and local acceptance reuse. A certificate binds one declaration to
+fixed source and proof data; a consumer lock fixes the selected identities.
+Provider signatures attribute supply. Admission validates the actual proof
+objects and every inherited certificate under a disclosed foundation.
+A concrete Lean profile specifies the encoding, dependency bindings, data-only
+checking process, authenticated local records, and build-failure behavior.
+We explain the assurance supplied by each stage and give an abstract composition
+argument. Evaluation combines a large archived formalization containing over
+30,000 modules and about 121 GiB of unpacked proof data with a fresh three-project
+case in which later proofs consume separately certified conclusions.
+Adversarial evaluation attempts to substitute statements under valid signatures,
+conceal inner proof obligations, and forge consumer acceptance. Each attempt
+is tied to the check that detects or prevents it. The protocol gives successive consumers an executable contract for
+preserving exact theorem identity, supply attribution, and checking scope.
+This supports the accumulation of reusable formal components as AI-assisted
+research increases demand on formalization and review.
+\end{abstract}
+
+\section{From understanding a theorem to handing it on}
+
+A mathematician considering an external theorem has good reasons to begin
+with its statement and proof. The quantifiers must match the intended problem,
+the definitions must express the intended objects, and the axioms must be
+acceptable for the intended use. Reading the argument also supplies ideas that
+can guide a new proof. These judgments remain central when a formal proof is
+available. A publication protocol should preserve the researcher's ability to
+make them and make their consequences reliable in subsequent work.
+
+Ordinary formal imports already provide the logical step of reuse. A theorem
+proved in an external Lean project can participate in a downstream proof;
+Lean's replay utility can additionally validate an environment by sending its
+declarations back to the kernel~\citep{leanreplay}. A careful maintainer can
+pin dependencies, inspect actual axiom dependencies, and maintain a controlled
+build. The case for a further protocol begins when an accepted result must
+travel between projects whose maintainers make these decisions separately.
+
+Consider a first researcher who publishes a theorem, a second who imports it
+and proves two new lemmas, and a third who needs one of those lemmas. At the
+first handoff, the collaborators may agree directly on a source version,
+statement, and checking basis. At the next handoff, the third researcher needs
+to recover what was actually selected and which parts of that basis remain
+applicable. If an inner component changes, someone must decide whether to
+retain the earlier source and proof data or adopt the replacement. A successful build
+answers a logical question within its current environment; the research
+collaboration also needs an explicit account of what that environment is
+supposed to preserve.
+
+The distinction matters even when every proof is valid. A statement about all
+positive integers and one about sufficiently large integers can both have
+correct proofs under the same axioms. A printed expression can also retain a
+familiar predicate name while the definition behind that name changes. With
+an unchanged, fully specified downstream goal, the kernel rejects an invalid
+inference from a replacement. When definitions, goals, or publication choices
+change together, kernel checking establishes correctness of the resulting
+formal development. Determining whether it is still the result previously
+chosen requires comparing its identity and interpretation. The axiom list
+answers which logical assumptions a proof uses; it leaves this continuity
+question to the surrounding workflow.
+
+Human review and identity checking therefore have complementary jobs. The
+researcher decides that a precise statement is relevant and that its foundation
+is suitable. The protocol records which formal realization, the concrete source and proof data, was selected.
+It makes replacement visible and enforces the consumer's declared conditions
+for accepting the component during use. A later change can be evaluated as a new choice. This makes a careful
+judgment actionable after the original conversation has ended. Interpreting
+the theorem remains a mathematical task, including checking its correspondence
+to the informal problem.
+
+Direct import can be accompanied by all of these measures. A team can maintain
+exact dependency locks, proof and source inventories, declaration-level
+assumption policies, authenticated attribution, and rules for reusing earlier
+checks. Such a workflow already performs the work addressed here. A common
+protocol gives those measures a shared meaning at the next handoff: which
+object was selected, what a check covered, and which changes require a fresh
+acceptance check. In a stable project under one maintainer, an established import
+workflow may be sufficient. The protocol addresses repeated publication and
+reuse across independently maintained projects, where otherwise each boundary
+must reconstruct these agreements.
+
+AI-assisted research gives this coordination problem particular urgency.
+Producing a candidate statement or argument leaves the work of constructing a
+complete formal proof, checking its intended meaning, and deciding how it can
+be used. As candidate production expands, these tasks can become the limiting
+capacity. An effective workflow must concentrate that capacity on the new
+argument while making completed formalizations available for further work.
+Ordinary imports already make such reuse possible within compatible projects.
+The additional engineering task is to preserve an explicit, inspectable basis
+for that reuse as components pass between maintainers and automated consumers.
+A protocol serves this task by making the conditions of reuse executable.
+
+Theorem Notary expresses this contract through per-declaration certificates.
+Each certificate binds a theorem's full interface, its proof realization, and
+its dependencies. A consumer lock fixes the exact identities that the consumer
+has chosen. Admission then checks the supplied proof data and its inherited
+certificates against those choices. Publicly inspectable proof material,
+definitions, and checking conditions give the contract its Glass Box character.
+The chain can grow while each consumer retains an explicit basis for deciding
+what to accept.
+
+Two records remain distinct throughout. Provider credit identifies the key
+that supplied a component. Mathematical acceptance records the consumer's
+check of the actual formal object under a disclosed foundation. Anyone can
+supply a component; acquiring a signature never creates a new logical premise.
+A fresh consumer performs its own admission, and an existing consumer can reuse
+its own authenticated record for an unchanged checking scope. What travels
+between researchers is a fully specified publication and its inspectable proof
+basis. The decision to accept it remains with the receiving project.
+
+This separation supports a useful form of mathematical specialization. One
+researcher can provide a substantial checked component; another can select an
+auxiliary lemma, build on it, and publish the resulting theorem with the
+inherited identities intact. A registry can make these publications discoverable
+without deciding their mathematical admissibility. Ordinary external imports
+supply the logical reuse mechanism; the protocol supplies a consistent contract
+for that mechanism across publication boundaries. The distinction between
+closing a proof and making a closed result durably composable motivates the
+mathematical engineering layer~\citep{engineering}. Here it becomes a concrete
+research question: how can independently published theorems retain their exact
+identity, credit, and checking basis through successive derivations?
+
+\section{Protocol objects and participants}
+
+The participants are a provider, a publication registry or mirror, and a
+consumer. A provider assembles an already checkable component and publishes a
+credit record. A registry supplies discovery and distribution. A consumer
+chooses the component it intends to use and applies its own acceptance policy.
+One person may play several roles, and several providers may supply the same
+component. Registry membership and provider reputation are not premises of
+the mathematical acceptance rule.
+
+Glass Box describes the relationship between an interface and its
+justification. Like a software package, a theorem component offers an interface
+that a client can use without reproducing the implementation. Here the
+interface states a proposition, and the implementation includes its proof.
+The client can reason with the exported theorem while its justification remains
+available for inspection: the proof objects, the meanings of referenced
+constants, all recursively referenced dependencies, and the declared logical foundation. The
+kernel checks that justification. A provider's claim that the interface works
+supplies no proof.
+
+The admissible components are \emph{Kernel-Only}: exported statements have
+complete proof objects checkable by the named kernel under an explicitly
+permitted foundation. Every additional theorem obligation must be discharged.
+An arbitrary assertion cannot acquire axiom status through signing or registry
+inclusion. The foundational axioms themselves are disclosed and remain subject
+to the consumer's policy. Ordinary Lean imports already support this form of
+proof-based abstraction. The protocol preserves its inspectable justification
+across separately published components and their derived publications.
+
+The protocol uses the objects in Table~\ref{tab:objects}. A \emph{proof
+realization} is a fixed collection of source and proof data under a named
+checking profile, which specifies how the component is to be checked.
+A \emph{declaration certificate} selects an actual theorem
+within that realization and records its full interface. The interface includes
+the declaration name, type expression, universe parameters describing levels
+in Lean's hierarchy of types, and the identity of the environment that gives its referenced constants meaning. Interface comparison uses these structural fields even when display formulas
+coincide.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+Object & Protocol function\\
+\midrule
+Proof realization & Fixes source, proof bytes, dependency publications, and checking profile.\\
+Declaration certificate & Binds one exact theorem interface and allowed foundation to a realization.\\
+Provider credit & Signs the certificate identity and records a provider key and declared name.\\
+Consumer lock & Fixes the component identities selected independently by the consumer.\\
+Acceptance record & Records the consumer's actual check and the scope within which it may be reused.\\
+\bottomrule
+\end{tabularx}
+\caption{Distinct objects for publication, selection, and mathematical admission.}
+\label{tab:objects}
+\end{table}
+
+A realization may support many declaration certificates. An auxiliary lemma
+and a repository's headline theorem are equally eligible if their actual
+proofs satisfy the profile. Their certificates remain distinct even when they
+share every module byte. A downstream author can therefore select several
+conclusions from one publication and later publish new conclusions that use
+them. The identity of the publication container does not determine the
+granularity of mathematical reuse.
+
+Object identities are content digests computed from a unique byte representation
+with a different prefix for each object kind. A parent realization binds both the realization identities and the
+certificate identities of its dependency publications. Binding only a package
+identity would leave the selection of its exported interfaces underspecified.
+Credit lists are outside mathematical identity, so adding another valid
+provider signature preserves the selected theorem. Mutable discovery metadata
+may point to these immutable identities, but it cannot update a consumer lock.
+
+A checking profile fixes the proof language, toolchain, permitted foundation,
+serialization conventions, and admission procedure. The protocol does not
+infer mathematical equivalence from changes in notation or software version.
+A changed realization obtains a new identity. Transport between profiles
+requires a separately justified mechanism; a provider signature does not
+perform that transport.
+
+\section{Technical architecture and acceptance contract}
+\label{sec:architecture}
+
+\subsection{Responsibilities and control boundaries}
+
+Consider the second researcher in the handoff of Section~1. The incoming
+publication is controlled by its provider, while the receiving project owns
+the choice of theorem and the conditions for using it. The architecture makes
+that division executable. Table~\ref{tab:architecture} assigns an input, output,
+and acceptance obligation to each stage. A \emph{publication bundle} is the
+transport object containing a realization, its declaration certificates and
+credits, and the inherited publications. The receiver can inspect those public
+objects without a provider account or a private registry response.
+
+\begin{table}[ht]
+\centering\small
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Stage and controller & Input and output & Required obligation\\
+\midrule
+Assembly: provider & Source and selected declarations produce a proof realization. & Build and check the actual exported theorems and inherited components.\\[3pt]
+Publication: provider; distribution: mirror & Realization and certificates form a portable bundle with credits. & Bind exact bytes, interfaces and dependency publications; authenticate supply.\\[3pt]
+Selection: consumer & A reviewed publication supplies the identities entered in a consumer lock. & Keep selection independent of the incoming object's authority.\\[3pt]
+Admission: consumer & Bundle, lock and checking policy produce rejection or mathematical acceptance. & Compare every certificate with the actual checked declaration and permitted foundation.\\[3pt]
+Use and republication: consumer becoming provider & Accepted components enter a derived proof and a new publication. & Preserve checked inputs through use and carry inherited identities into the new bundle.\\
+\bottomrule
+\end{tabularx}
+\caption{The technical handoffs and the party responsible for each. Registry
+availability affects delivery; registry approval supplies no proof premise.}
+\label{tab:architecture}
+\end{table}
+
+Four levels of specification have distinct roles. The \emph{protocol} fixes
+these objects, control boundaries and acceptance obligations. A \emph{profile}
+chooses their exact encoding, proof language, checker procedure and permitted
+foundation. The \emph{reference implementation} executes one profile. A
+\emph{deployment} supplies the trusted checker installation, protected local
+state and stable storage assumed by that execution. Changing a hash scheme
+or proof representation requires a declared profile with its own acceptance
+rules. It preserves the architecture when exact selection, independent proof
+admission and the consumer's control remain intact. Unsupported profiles are rejected.
+
+The adversary may supply a whole bundle, valid signatures, false interface
+claims and arbitrarily nested publications. It may also alter received files
+or present a forged acceptance record. The consumer's lock, checking software,
+local authentication secret and accepted storage remain outside that authority.
+This allocation is the basis for the acceptance procedure below. Compromise of
+a consumer-controlled facility defeats its associated guarantee and requires
+additional deployment controls.
+
+\subsection{Assembly and immutable publication}
+
+The provider chooses the theorem names to export, admits its own dependencies,
+and builds the supplied source in a trusted publishing environment. It then
+checks the compiled proof data and inspects the actual theorem interfaces and
+axiom dependencies. Only a successful check enables the reference publishing
+route to issue eligible declaration credits. Possession of a signing key is
+unrestricted; signatures produced outside this route still face the full
+consumer procedure.
+
+The publication records a file inventory, a module-to-file map and the exact
+identities of inherited publications. Its dependency binding includes both a
+bundle identity and the certificate identities exported by that dependency.
+Each declaration certificate binds its own interface and axiom policy to the
+bundle. These relationships let a consumer distinguish a changed proof
+realization, a different exported conclusion and an additional provider credit.
+The source, proof and interface bindings change mathematical identity; another
+valid credit preserves that identity. Mirrors may change download locations
+without changing the consumer's selection.
+
+\subsection{Consumer admission algorithm}
+\label{sec:admission}
+
+The inputs are a received bundle, an independently selected consumer lock, a
+supported checking profile and consumer-controlled local state. Admission
+processes the complete finite publication closure, meaning all publications
+reachable through its dependency bindings. Shared components may be checked
+once by identity. Every declared certificate remains covered, including an
+inner conclusion that the chosen outer theorem does not use.
+
+A conforming admission procedure performs the following checks in order:
+\begin{enumerate}
+\item \textbf{Select and validate the object.} Enforce the supported schema and
+profile; recompute bundle and certificate identities; require the selected
+bundle and certificates to match the consumer lock. Reject malformed objects,
+unsupported versions and absent selections.
+\item \textbf{Validate the whole publication closure.} Check all provider
+signatures, every source and proof file, the module inventory, and each
+parent-to-dependency binding. Inherited module bytes must agree wherever they
+occur. Reject missing, unlisted or conflicting data before proof replay.
+\item \textbf{Resolve local acceptance reuse.} If a local record exists,
+authenticate it with the consumer's own secret. An invalid record fails.
+Reuse requires a valid local record whose full checking scope matches the
+current object and checking installation. A matching scope returns the reused
+decision; a stale scope continues with the fresh-check steps. Incoming provider records cannot authorize this step.
+\item \textbf{Check actual proof data.} Launch the trusted checker without
+provider-controlled search paths or plugins. Read the complete proof data,
+replay its declarations through the kernel, and inspect the actual theorem
+kind, type, universe parameters and reachable assumptions for every certificate.
+Compare the loaded module closure with the declared inventory.
+\item \textbf{Compare each certificate separately.} Require its checked
+interface to equal the claimed interface and its actual axiom set to lie
+within that certificate's policy. Check its original proof dependencies against
+its own realization; modules supplied only by an outer publication cannot fill
+an omission in an inner one. Agreement with a broader policy used for
+another certificate is insufficient. Every accepted foundational axiom must
+have the identity required by the trusted foundation.
+\item \textbf{Seal the decision for use.} Recheck the publication bindings and
+input bytes after a fresh check. Record the checker result together with its
+scope in authenticated local state. Make the derived build depend on acceptance
+of these inputs; a failure returns an error and prevents a successful result
+for the attempted build.
+\end{enumerate}
+
+The outputs distinguish \emph{content and credit verified}, \emph{fresh
+mathematical acceptance}, and \emph{local acceptance reused}. The first result
+covers object integrity and attribution. The latter two additionally cover an
+actual proof check under the recorded scope, performed now or retained locally.
+This distinction must remain visible to both the build and the reader of its
+result. Both fresh and reused decisions remain subject to the same controlled-use
+and build-dependency requirements. No transition constructs a theorem from a signature.
+
+\subsection{Keeping acceptance valid through use}
+
+A local acceptance record contains the checked interfaces and their policies,
+source and proof inventories, the checking code and executable identities, the
+loaded foundation-file identities, and the checker report. Provider credits
+are verified on each admission request, but are outside the reusable
+mathematical scope. Consequently, an additional valid credit needs no new proof
+replay. A changed proof, interface, foundation or checker invalidates the
+matching record and requires the appropriate new selection or fresh check.
+
+The accepted files must remain stable between checking and use. The reference
+runner acquires an exclusive admission lease and rechecks bytes before sealing
+success. The lease coordinates cooperating local runs; storage controlled by
+an attacker requires a read-only snapshot or equivalent protection. Similarly,
+a digest records which executable was checked but does not prevent that
+executable from being replaced afterwards. The deployment preserves the
+installation and accepted store for the lifetime of the reused acceptance.
+
+The normal build invokes this admission path even when its own source is
+unchanged. It then uses the admitted declarations in an ordinary proof. A
+successful derived publication binds the inherited bundle and certificate
+identities again, so the next consumer can execute the same contract.
+
+\vspace{0pt}\Needspace{20\baselineskip}
+\section{Composition and the security boundary}
+
+The composition argument separates logical validity from object binding.
+
+\begin{proposition}[Composition]
+% formal-claim-begin: composition
+Let
+$C$ be a type of claims, let $F,K,M:C\to\mathrm{Prop}$ denote foundation
+membership, local checked inference, and intended validity, respectively, and
+let $D:C\to\mathrm{List}(C)$ give the dependencies of a claim. Define
+$\Accept(c)$ inductively: it holds when $F(c)$ holds, or when $K(c)$ holds and
+$\Accept(d)$ holds for every $d\in D(c)$. This describes a finite acceptance
+derivation, with repeated dependencies permitted.
+
+For all such $C,F,K,M,D$, assume
+$\forall c,\ F(c)\Rightarrow M(c)$ and
+$\forall c,\ K(c)\Rightarrow
+((\forall d\in D(c),\ M(d))\Rightarrow M(c))$.
+For every root $r\in C$, $\Accept(r)$ implies $M(r)$.
+% formal-claim-end: composition
+\end{proposition}
+
+\begin{proof}
+% relation-claim-begin: composition-proof
+Induct on the acceptance derivation. In the foundation case, the first
+assumption gives validity. In the derived case, the induction hypotheses give
+validity for every listed dependency; the second assumption combines these
+facts with the local checked inference to give validity of the root.
+% relation-claim-end: composition-proof
+\end{proof}
+
+There is no fixed depth in this argument. Its local soundness premise must
+include faithful interface binding and complete dependency coverage. The
+proposition does not discover missing dependencies or prove the correctness of
+a parser, kernel implementation, signature library, or filesystem. The Lean
+companion supplied with the reference implementation (Section~\ref{sec:lean})
+states this same abstract induction theorem explicitly; applying it
+to an implementation retains those implementation assumptions.
+
+\begin{proposition}[Credit independence]
+% formal-claim-begin: credit-independence
+For any types $C,Q$, predicate $A:C\to\mathrm{Prop}$, claim $c\in C$, and
+credits $a,b\in Q$, define mathematical acceptance by
+$\mathsf{MathematicalAcceptance}(A,c,q):=A(c)$.
+Then mathematical acceptance with credit $a$ is equivalent to mathematical
+acceptance with credit $b$.
+% formal-claim-end: credit-independence
+\end{proposition}
+
+\begin{proof}
+% relation-claim-begin: credit-proof
+Both sides are the same proposition $A(c)$ by definition.
+% relation-claim-end: credit-proof
+\end{proof}
+
+\begin{proposition}[Replacement of valid credit]
+% formal-claim-begin: valid-credit
+For any types $C,Q$, predicates $A:C\to\mathrm{Prop}$ and
+$V:Q\to\mathrm{Prop}$, claim $c\in C$, and credits $a,b\in Q$,
+if $V(a)$ and $V(b)$, then
+$(A(c)\land V(a))\leftrightarrow(A(c)\land V(b))$.
+% formal-claim-end: valid-credit
+\end{proposition}
+
+\begin{proof}
+% relation-claim-begin: valid-credit-proof
+In either direction retain $A(c)$ and pair it with the assumed validity of the
+replacement credit.
+% relation-claim-end: valid-credit-proof
+\end{proof}
+
+The latter two propositions record a deliberate separation of roles; their
+simple proofs reflect that design. Protocol-level eligibility may require a
+valid credit, while mathematical validity remains independent of who provides
+it. A compromised signing key can misattribute supply. Under an unchanged
+consumer lock it cannot silently replace the bound proof, and it cannot make a
+false type pass a sound proof checker even if a consumer approves a new lock.
+
+Replacement detection assumes collision resistance of the selected digest and
+correct verification of signatures. A changed proof, source, interface, or
+dependency changes the bound identity. Re-signing a changed graph does not
+restore its former identity. A genuinely valid replacement may be accepted
+under a new lock, preserving integrity through an explicit new selection.
+The registry may withhold objects or present conflicting discovery views; these
+are availability and discovery problems. The accepted identities remain
+consumer-selected.
+
+\section{Concrete Lean profile and assurance argument}
+\label{sec:lean}
+
+The reference profile fixes Lean 4.30.0-rc2 and supplies an export/admission
+library, command-line operations and a default Lake target. Lake is Lean's
+project build tool; the default target is the operation run by an ordinary
+\texttt{lake build}. The code and normative specification are located in the
+\hyperref[sec:artifacts]{artifact availability statement}. This section gives
+the technical construction that implements Section~\ref{sec:admission}.
+
+\subsection{Encoding and cross-object commitments}
+
+The \emph{core} of an object is the set of fields committed by its identity.
+The bundle core contains the profile and toolchain, module map, file hashes
+and dependency bindings. A declaration core contains its bundle identity,
+interface and allowed axioms. The full transport envelope also carries credits
+and nested publications, which are checked against those cores.
+
+Let $\operatorname{can}(x)$ be the canonical byte encoding of core $x$.
+This profile uses UTF-8 JSON with no inter-token whitespace, preserves literal Unicode
+scalar strings, orders object keys by UTF-8 bytes and preserves array order.
+It permits null, booleans, strings, arrays, objects and integers in
+$[-(2^{53}-1),2^{53}-1]$. Duplicate keys, floating-point values and invalid
+Unicode are rejected. This gives independent readers the same byte sequence
+without silently normalizing a name or expression.
+
+SHA-256 supplies the content hash. For an object kind labelled $d$, its identity is
+\[
+\operatorname{id}_{d}(x)=\texttt{sha256:}\,\Vert\,
+\operatorname{hex}\!\left(\operatorname{SHA256}
+  (\operatorname{tag}_{d}\Vert\texttt{0x00}\Vert\operatorname{can}(x))\right).
+\]
+Here $\Vert$ denotes byte concatenation, \texttt{0x00} is one zero byte,
+$\operatorname{hex}$ renders a digest
+as hexadecimal, and $\operatorname{tag}_{d}$ is the UTF-8 string
+\texttt{theorem-notary/}$d$\texttt{/v1}. Distinct domains for bundles and
+components prevent one kind of object from being reinterpreted as the other.
+A provider signs a separate credit body containing the component identity,
+provider role, declared name, public key and key fingerprint. The Ed25519
+signature scheme signs that canonical body with the separate
+\texttt{theorem-notary/provider-credit/v1} tag and a zero-byte separator.
+The public key identifies the cryptographic supplier; a human-readable name
+remains provider-declared.
+
+The interface fields are the declaration's full name, structural type
+expression and universe parameters. The pinned Lean expression representation
+retains referenced constants and binder information; the bundle fixes the
+definitions that give those constants meaning. Source and proof paths are
+relative to the bundle, and each has an exact digest. The profile binds the
+compiled module data, including exported, server and private proof-data parts
+when present, so a hidden part cannot supply an unlisted dependency.
+Compiled realizations are version-specific; profile migration requires an
+explicitly justified new realization.
+
+\subsection{Data-only checking and complete dependency coverage}
+
+The checker starts as a separate process with trusted search paths. It first
+loads its own checking code and the official foundation. Only then does it
+introduce the supplied proof-data directory. Before launch, the runner rejects
+supplied modules that would shadow installed toolchain modules. The checker
+disables imported extensions and provider plugins, reads proof data, and replays
+declarations into a fresh kernel environment. Thus the provider's code cannot
+obtain a successful admission merely by printing the expected output or
+running a module initializer.
+
+To preserve each publication's original proof realization, the checker also
+compares the declaration records retained in the individual imported modules.
+Where a supplied module shares a declaration name with another module, the
+records must agree structurally, including the proof body. This check precedes
+reliance on the merged environment: a same-type theorem with a different proof
+cannot discharge an earlier component's unproved obligation. Each inherited
+module must also retain exactly the same ordered proof-data parts in its parent.
+
+For each certificate, the object must be a theorem in the original proof data.
+Its type and universe parameters must agree with the replayed declaration.
+The checker traverses the constants actually used in its type and proof,
+recursively inspects their definitions, and records the reachable axioms and
+referenced theorems. An uncovered constant fails. The runner also compares the
+actually loaded non-foundation modules with the complete bundle inventory;
+module parts must come entirely from either the bundle or the trusted
+installation. Uncontrolled paths, missing modules and conflicting data fail.
+
+Coverage is also checked within each inherited realization. The checker retains
+the original module origins of reachable constants, including dependencies
+through field projections, mutually defined inductive types and their
+recursors, the rules for eliminating inductive values. For each
+such constant, at least one identical original occurrence must belong to that
+certificate's realization or the trusted installation. Multiple identical
+origins are alternatives, so import order does not assign arbitrary ownership.
+Each module's recorded imports must likewise be available within that
+realization. The outer union of valid modules therefore cannot conceal an
+inner publication's missing dependency. These comparisons allow one replay to
+support several certificates while preserving each certificate's own scope.
+
+The permitted foundational axioms are \texttt{propext}, which supplies
+propositional extensionality; \texttt{Classical.choice}, which supplies classical
+choice; and \texttt{Quot.sound}, which supplies quotient soundness. Their actual
+types and universe parameters must match the official installed foundation.
+A certificate may allow a smaller subset. Even when one replay covers several
+certificates under their combined axiom set, the runner separately enforces
+each certificate's narrower policy. Reachable unproved assertions introduced by \texttt{sorry} or extra
+project axioms, an axiom offered as a theorem, and unsafe or partial reachable
+proof dependencies fail. The composition companion and the small reuse case
+require none of these foundational axioms.
+
+\subsection{Local records and build behavior}
+
+Fresh admission produces a structured checker report listing the replay state,
+extension-initialization state, loaded module parts, checked interfaces,
+actual axioms and referenced theorems. The runner records this report with the
+scope described in Section~\ref{sec:architecture}. It authenticates the local
+record using HMAC-SHA-256, a keyed message authentication code whose secret is
+held by the consumer outside the publication. This local format is a cache
+control for the reference runner; public certificate exchange does not require
+sharing that secret.
+
+The admission operation returns \texttt{created} for fresh acceptance or
+\texttt{reused} for a matching local record, together with the bundle identity,
+replay count and record location. Inspection alone reports a content-and-credit
+assurance label. The generated default Lake target invokes the build runner,
+which admits dependencies before producing a derived result. It revisits those
+dependencies even when reusing an unchanged derived publication. A failed
+invocation returns a nonzero exit code and replaces the attempted build's
+result with a failure state. A stale successful result therefore cannot mask
+the rejection in this tested build path.
+
+\subsection{Why these mechanisms establish the claimed assurance}
+
+The assurance argument follows the same object through successive checks.
+Canonical commitments and the independently held lock fix which publication
+is being evaluated. Complete inventories prevent extra proof files from
+entering unnoticed. Kernel replay establishes the formal content of the proof
+data; structural comparison ties that content to each advertised declaration.
+Original declaration comparison preserves the proof objects across import merging.
+Original-origin and import checks preserve each realization's dependency scope.
+Per-certificate axiom checks enforce the selected foundation. Local record
+authentication preserves the scope of a past check, and storage control
+preserves its inputs through use. Table~\ref{tab:assurance} gives the decisive
+check for representative failures. These are separate, falsifiable obligations;
+passing one does not grant the guarantees of the others.
+
+\begin{table}[ht]
+\centering\small
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Failure presented to the receiver & Decisive check and supporting assumption\\
+\midrule
+Changed proof or dependency, consistently re-signed & Recomputed identities must match the consumer's existing lock; relies on digest collision resistance and protected selection.\\[3pt]
+False interface under an approved new lock & Actual replayed type must match every certificate; relies on checker soundness and complete dependency inspection.\\[3pt]
+A valid outer theorem carrying a false inner certificate & All inherited certificates receive interface and axiom comparison, including unused exports.\\[3pt]
+Same theorem name carrying a different proof body & Original per-module declaration comparison and identical inherited part inventories preserve the checked realization.\\[3pt]
+Inner dependency omitted but supplied by an outer publication & Original constant origins and actual imports must be covered by the inner realization or trusted foundation.\\[3pt]
+Provider code impersonating the checker & Trusted startup paths, module-shadow rejection and disabled import extensions isolate the tested admission path.\\[3pt]
+Forged record or changed inputs after acceptance & Consumer-owned authentication and exact scope comparison reject forged or stale reuse; stable storage must hold through use.\\
+\bottomrule
+\end{tabularx}
+\caption{Technical assurance is attached to explicit checks and their trusted
+facilities. The adversarial evaluation exercises these boundaries.}
+\label{tab:assurance}
+\end{table}
+
+This procedure is independent of the provider's private services: a fresh
+consumer with the public bundle, its selected lock and the trusted checking
+installation can perform admission. The first profile uses Lean's existing
+binary reader and kernel. The abstract composition theorem assumes the
+soundness and faithful binding of these local checks; it does not verify the
+runner, cryptographic libraries or binary reader. Resource control limits
+nested publication envelopes to 64 levels. Public conformance vectors pair specified inputs with expected encoding,
+identity and signature results. Python and Node.js produce the same committed
+bytes and verify the same signatures for those inputs.
+
+Source correspondence and deployment protection have their own controls.
+The publishing route compiles the supplied source, while the receiving checker
+validates the resulting proof data. Independently rebuilding the readable
+source would additionally test that it produces those data. The present
+profile assumes a trusted publishing build environment and an immutable
+checking installation, including its runtime dependencies. The runner directly
+hashes its own code, checker source, Lean executable and loaded foundation
+parts; those hashes do not inventory every executable dependency on the host.
+Production acceptance of hostile source uploads requires an execution sandbox,
+and hostile concurrent file writers require protected snapshots. The profile
+makes these responsibilities visible at the deployment boundary.
+
+\section{Publication and reuse cases}
+
+\subsection{An independently published mathematical component}
+
+The large-component case has a narrow theorem interface backed by 30,638
+project modules and about 121 GiB of unpacked proof data. It uses an archived
+formalization of the exact extremal bound in Erdős Problem 848. The result
+concerns the maximum size of
+$A\subseteq\{1,\ldots,N\}$ for which $ab+1$ is nonsquarefree for every
+$a,b\in A$, including $a=b$; its exact bound for positive $N$ is
+\mbox{$\lfloor(N+18)/25\rfloor$}~\citep{erdos848}. The protocol experiment uses this existing formal result as a publication
+case; its contribution concerns the handoff of the proved statement.
+
+The published certificate binds the actual all-$N$ declaration, its fixed
+source release, the proof archive, and the allowed foundation. Its provider
+credit names Alex Chengyu Li and a public signing key. The name is
+provider-declared; signature verification establishes key attribution, not
+independent verification of the person's identity or priority. An external
+consumer imports the original theorem and proves its own literal alias, while
+exposing the certificate's provenance and checking basis. A consumer choosing
+this result is selecting the full positive-integer range, the diagonal pairs,
+and the exact extremal bound. Reading the mathematical argument establishes
+why those features matter. The certificate binds that selection to the actual
+declaration and proof archive, so later consumers can identify the supplied
+formal result and inspect its checking history.
+
+Restoring this case required about 30 GiB of archive downloads. Its historical
+kernel archive is accepted under an explicit, immutable archive policy, and
+the new external consumer was checked separately. The experiment does not
+claim a fresh complete replay of the upstream proof under the new generic
+profile. These two assurance histories remain visible instead of being
+collapsed into one label.
+
+\subsection{Derived publications across three projects}
+
+A separate fresh-proof case tests composition without relying on the large
+historical archive. A provider defines binary trees and proves two conclusions:
+mirroring twice returns the original tree, and mirroring preserves leaf count.
+Each receives a declaration certificate. A second project imports both,
+packages double mirroring as a round trip, and proves that the round trip
+preserves the tree and its leaf count. A third project mirrors the round trip
+once more and defines a frame size as its leaf count plus a fixed overhead of
+four. Using both middle-project conclusions, it proves that the output equals
+the original tree's mirror and that the frame size equals the original leaf
+count plus four. These are six distinct
+certificates carried by three projects. The second project is both a consumer
+and a new provider. The third project receives its conclusions together with
+the inherited publication identities, and can check that whole chain without
+taking the second provider's account of earlier checks as sufficient evidence.
+This is the protocol's recurring use case: a researcher publishes a result
+that remains usable when its consumer subsequently becomes a provider.
+
+The final proof dependency reports identify both of the middle project's
+theorems. Thus the example exercises actual theorem use, not only the presence
+of signed references beside an unrelated proof. The middle project's default
+Lake target performs admission before producing its result. Modifying the
+imported proof causes this ordinary build to fail. A separate eight-layer
+fixture, with two conclusions at every layer, exercises deeper wrapping; the
+abstract composition argument is independent of those tested depths.
+
+The receiving context is a separate process supplied with public bundle bytes,
+a consumer-selected lock, fresh acceptance state, and a different local key.
+Its first admission replays the proof. Repetition and the addition of a second
+valid provider credit reuse the mathematical acceptance record. A source
+revision, even one preserving the theorem statements, receives a new identity;
+the old lock rejects it, and an explicitly updated lock triggers new admission.
+This automated cold context is on the same physical workstation. Reproduction
+by another operator or on another platform remains a further validation step.
+
+\section{Adversarial evaluation and cost}
+
+The evaluation asks whether a receiver can be made to accept a different
+statement, lose an inner component's proof obligation, or reuse a fabricated
+checking result. The adversary has the bundle and file controls of
+Section~\ref{sec:architecture}, including its own valid signing keys. The
+consumer controls its lock, local authentication secret and checking installation.
+The cases below specify the attempted deception and the observed rejection.
+The executable inputs and complete result inventory are located by
+\texttt{Notary/REFERENCE.md} and \texttt{Notary/reference-result.json} in the
+public repository listed under Artifact availability.
+
+\subsection{Replacing the selected theorem or its inner justification}
+
+A valid signature is particularly revealing when it authenticates the wrong
+claim. We replace a tree theorem's advertised type with \texttt{False}, leave
+its compiled proof unchanged, and sign the modified certificate with a valid
+provider key. The original consumer lock rejects the changed certificate
+identity. We then explicitly select the altered certificate in a new lock,
+so that this identity check no longer decides the outcome. Admission still
+rejects it: the advertised \texttt{False} type differs from the declaration
+actually checked by the kernel. Placing the same false certificate inside a
+derived publication, recomputing the outer dependency bindings, and signing
+the outer certificates also ends in this interface rejection. The checks
+therefore cover the inherited claim even when the outer proof remains valid.
+
+The original proof presents a different substitution opportunity. Two compiled
+modules export the same named theorem of \texttt{True}; one uses
+\texttt{sorry} to leave its proof obligation unresolved, while the other uses
+\texttt{True.intro}. A merged
+environment could present the valid proof for that name and thereby conceal
+the first component's unresolved obligation. The receiver rejects the pair
+when it compares the original module declarations, before accepting that
+merged view. Checking the module containing \texttt{sorry} alone also fails for its
+\texttt{sorryAx} dependency. The proposition is true in this example; the
+rejection preserves which component actually supplied a complete proof.
+
+To challenge dependency ownership, we remove the tree provider from the inner
+round-trip publication's dependencies and module inventory. We retain the
+provider's proof files in the outer application and re-sign the changed inner
+and outer publications. Content and signature checks accept the internally
+consistent descriptions. Fresh mathematical admission rejects the inner
+round-trip module's actual import, which its own realization no longer covers.
+The outer application's possession of a valid proof therefore does not repair
+the inner publication's missing dependency. This case locates the required
+check at each realization's boundary, beyond verification of the outer union.
+
+A permitted update supplies a comparison with these failures. Appending a source
+comment preserves the theorem statements but changes the source realization.
+The old lock rejects it; an explicitly selected new lock leads to fresh
+admission. Adding another valid provider credit to an unchanged component
+instead reuses the mathematical acceptance record. Together these observations
+distinguish a new component choice from a change in who supplies it.
+
+\subsection{Protecting the checking process and the build decision}
+
+We flip a byte in an imported compiled module and attempt to reuse the earlier
+acceptance. Inventory validation rejects the file before kernel replay. Running
+the consumer's ordinary \texttt{lake build} against that dependency also fails
+and replaces the stale successful build result with a failure state. Adding a
+compiled module absent from the inventory is rejected as unlisted data. These
+observations connect the public binding rule to the operation a downstream
+author actually invokes.
+
+To impersonate trusted checking code, we place provider-controlled files at the
+paths of \texttt{Lean.Replay} and \texttt{Init}; the runner rejects both before
+launching the checker. A separate module has a valid theorem together with an
+initializer that writes a marker file. Ordinary import writes the marker,
+providing a control that the code can execute. Admission of the same proof
+data leaves the marker absent. Another source prints a success-looking message
+but offers a proof of \texttt{False} through \texttt{sorry}; the independent
+checker rejects its axiom dependency and the publisher produces no certificate.
+These experiments exercise search-path isolation, disabled initialization and
+actual proof inspection. The binary reader's memory safety remains a trusted
+implementation property.
+
+Finally, we edit the stored checker report inside an existing local acceptance
+record while retaining its old authentication tag. Reuse fails authentication.
+Supplying an empty or malformed consumer lock also fails, even with a valid
+previous record available. Thus possession of cached success cannot replace
+selection, and changing a cached report requires the consumer's authentication
+secret. Lower-level regression cases check that duplicate JSON keys and invalid
+numeric encodings are rejected, distinct object domains have distinct
+commitments, credit identity stays bound to its key, and inherited proof-data
+parts preserve their exact ordering and membership. Their purpose is to preserve
+the specified input contract between revisions; the public inventory identifies
+the particular behaviors exercised.
+
+\subsection{Cost of fresh acceptance and subsequent reuse}
+
+The cost question is how much checking remains when a consumer receives a
+component for the first time, uses it again, or explicitly adopts changed source.
+Table~\ref{tab:cost} records these operations alongside content inspection and
+ordinary builds, whose assurance scopes differ.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}Xr@{}}
+\toprule
+Operation & Elapsed seconds\\
+\midrule
+Fresh consumer mathematical admission & 64.8\\
+Unchanged consumer acceptance reuse & 3.0\\
+Updated dependency with an explicitly new lock & 69.5\\
+Content and credit verification alone & 0.005\\
+Plain Lake build with fresh project state & 1.8\\
+Plain Lake warm build & 0.9\\
+Notary-consuming Lake warm build & 7.1\\
+\bottomrule
+\end{tabularx}
+\caption{Single observations from the small reuse experiment. The operations
+have different assurance scopes. An equal-assurance comparison of performance
+with ordinary cached imports remains a separate evaluation task.}
+\label{tab:cost}
+\end{table}
+
+Table~\ref{tab:cost} distinguishes costs that a single successful-build label
+would hide. Fresh admission includes whole-environment replay. Reuse verifies
+the acceptance scope and current bytes. Plain Lake measurements provide an
+ordinary build baseline, whereas content-only checking supplies no new
+mathematical evidence. The measurements were made on a Windows workstation
+under normal load without resetting the operating-system file cache. Cold
+means fresh project or acceptance state. The operating-system cache remained
+available, and network downloads were outside the timed operations. Successful publisher and derived-package artifacts
+were retained during the completed evaluation; their reuse is recorded
+separately from fresh consumer admission.
+
+The result is useful acceptance reuse, accompanied by substantial initial
+checking overhead. It motivates research on checked persistent environments,
+proof-closure deduplication, and declaration-level reuse under equivalent
+assurance. Those optimizations must preserve exact bindings and coverage. A
+smaller downloadable certificate or a cryptographic signature cannot by itself
+replace the proof obligation.
+
+\section{Relation to existing systems and implications}
+
+OpenTheory provides directly relevant precedent for packaging logical
+theories, tracking dependencies, and exporting and importing them across higher-order logic (HOL)
+systems~\citep{hurd2009}. The present Lean profile has narrower logical
+interoperability. Its focus is an explicit contract joining declaration
+selection, provider credit, consumer-controlled admission, and derived
+publication. Existing proof exchange is the starting point for this
+specialization.
+
+Software supply-chain systems provide a second precedent. In-toto binds
+artifacts and development stages cryptographically so that consumers can
+check the integrity of a software supply chain~\citep{intoto2019}. The theorem
+setting requires an additional distinction: an authentic process record or
+provider credit is insufficient for mathematical admission. The actual
+declaration must pass the relevant logical checker under its disclosed
+foundation. Conversely, a correct theorem does not by itself authenticate
+provider identity, prove source correspondence, or ensure registry
+availability.
+
+The practical gain is continuity between mathematical choice and subsequent
+use. A reader can first decide whether a theorem says what is needed, then
+select its exact publication, and finally build a new result whose inherited
+basis remains inspectable. A collaborator receiving that result obtains
+explicit objects and admission conditions in place of an implicit agreement
+with every earlier maintainer. The protocol thereby makes careful theorem
+provision a reproducible role in a larger research collaboration.
+
+Adoption can begin at one publication boundary. A project may keep its ordinary
+Lean proofs and use the admission target when consuming a published component.
+Content-addressed publications can be distributed through files, repositories,
+or mirrors; a central registry adds discovery and distribution. The provider's
+credit remains visible across that distribution, and consumers continue to
+choose their own locks and checking conditions. This organization accommodates
+independent providers alongside shared libraries, with publication granularity
+at the level of each eligible theorem.
+
+The strongest reason to adopt the protocol is a need to carry this explicit
+contract across maintainers, releases, or derived publications. An existing
+workflow that already supplies the same bindings and checks can implement the
+contract with familiar tools. The reference implementation demonstrates that
+the contract can be executed and tested. Independent consumers, further
+substantial components, and equal-assurance workflow comparisons can establish
+where standardization saves effort in practice. The current timings expose
+the cost of fresh admission and the benefit of reusing its unchanged local
+result; theorem interpretation, source correspondence and version migration
+retain their own obligations.
+
+The long-term objective of a comprehensively formalized mathematical library
+makes this contract especially consequential. Such a library would give
+subsequent research a growing body of explicitly stated, checkable inputs.
+Automated iteration requires a machine to distinguish an accepted component,
+a changed realization, and a candidate still awaiting proof. Per-declaration
+publication and explicit admission make those distinctions available to a
+build process. New mathematical work can then accumulate on a disclosed basis,
+with formalization effort directed toward extending that basis. The reference
+profile establishes one part of this organization; constructing and reviewing
+the new proofs remains substantive work.
+
+A theorem publication centre built on this protocol would therefore organize
+access to independently checkable mathematical components. Providers receive
+credit for making those components available. Researchers preserve control over
+which theorem and foundation enter their work. Derived publications retain
+that discipline at every handoff, allowing the output of one proof project to
+become an explicit, inspectable input to the next.
+
+\section*{Artifact availability}
+\label{sec:artifacts}
+The reference implementation, normative profile, public wire vectors, and
+reproduction instructions are available at
+\url{https://github.com/crabsatellite/mathlib-theorem-notary}.
+The repository's \texttt{Notary/reference-result.json} identifies the evaluated
+source files by digest and records the experimental results. The large \#848
+source and proof archive are available from
+\url{https://github.com/crabsatellite/erdos-848-squarefree-product}.
+Local acceptance secrets are not part of either public artifact.
+
+\section*{AI assistance}
+OpenAI Codex was used as an AI-agent component in software development and
+manuscript drafting.
+The author is responsible for the protocol claims and their interpretation;
+the reported checks refer to the recorded artifact executions.
+
+\bibliographystyle{plainnat}
+\bibliography{paper_references}
+\end{document}

@@ -1,0 +1,27 @@
+# Local paper runtime and third-party source captures; keep private infrastructure private.
+.paper-infrastructure/
+.paper-infrastructure/runtime/
+.paper-infrastructure/paper_infrastructure.py
+.paper-infrastructure/install.json
+.paper-infrastructure/FORMALIZATION_STANDARD.md
+.paper-infrastructure/*receipt*.json
+.paper-evidence/
+output/
+# Manuscript production, review bindings and local verification orchestration.
+paper_tools.py
+paper_prepare.py
+paper_package.py
+paper-build.*
+paper-*.json
+paper-*.md
+paper-*.csv
+PAPER.md
+overlap-probe.policy.json
+dependency-probe.policy.json
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.olean*

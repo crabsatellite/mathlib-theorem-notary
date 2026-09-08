@@ -110,7 +110,43 @@ def dependency_binding(bundle):
             'certificates': sorted(c['component_id'] for c in bundle['certificates'])}
 
 
+def validate_lock(locked: dict) -> None:
+    """Require a real consumer selection, including before authenticated reuse."""
+    if (type(locked) is not dict
+            or set(locked) != {'schema', 'profile', 'bundle_id', 'certificates'}
+            or locked['schema'] != 'theorem-notary/consumer-lock/v1'
+            or locked['profile'] != PROFILE):
+        raise NotaryError('Malformed consumer lock')
+    valid_id = lambda x: type(x) is str and re.fullmatch(r'sha256:[0-9a-f]{64}', x)
+    selected = locked['certificates']
+    if (not valid_id(locked['bundle_id']) or type(selected) is not list or not selected
+            or not all(valid_id(x) for x in selected) or len(selected) != len(set(selected))):
+        raise NotaryError('Consumer lock requires distinct selected certificate identities')
+
+
+def validate_certificate_envelope(cert: dict) -> None:
+    if type(cert) is not dict or set(cert) != {'component_id', 'core', 'credits'}:
+        raise NotaryError('Unsupported declaration envelope fields')
+    if type(cert['credits']) is not list or not cert['credits']:
+        raise NotaryError('Declaration requires provider credit')
+    required = {'component_id', 'role', 'display_name', 'identity_scope', 'public_key',
+                'key_fingerprint', 'mathematical_endorsement'}
+    for credit in cert['credits']:
+        if type(credit) is not dict or set(credit) != {'schema', 'body', 'signature'}:
+            raise NotaryError('Unsupported credit envelope fields')
+        body = credit['body']
+        if (type(body) is not dict or not required <= set(body)
+                or type(body['display_name']) is not str
+                or body['identity_scope'] != 'key attribution only; name is provider-declared'):
+            raise NotaryError('Malformed provider attribution')
+        for encoded in (body['public_key'], credit['signature']):
+            if (type(encoded) is not str or
+                    base64.b64encode(base64.b64decode(encoded, validate=True)).decode() != encoded):
+                raise NotaryError('Noncanonical Base64 credit encoding')
+
+
 def verify_bundle(folder: Path, locked: dict | None = None, document=None, depth=0) -> dict:
+    if locked is not None: validate_lock(locked)
     if depth > 64: raise NotaryError('Dependency nesting exceeds the v1 resource limit')
     bundle = load(folder / 'bundle.json') if document is None else document
     canonical(bundle)
@@ -124,12 +160,8 @@ def verify_bundle(folder: Path, locked: dict | None = None, document=None, depth
         raise NotaryError('Unsupported proof profile')
     if bundle['bundle_id'] != digest(core, 'bundle'):
         raise NotaryError('Bundle identity mismatch')
-    if locked and (locked['bundle_id'] != bundle['bundle_id'] or locked['profile'] != PROFILE):
+    if locked is not None and locked['bundle_id'] != bundle['bundle_id']:
         raise NotaryError('Consumer-locked bundle changed')
-    if locked and (set(locked) != {'schema', 'profile', 'bundle_id', 'certificates'}
-                   or locked['schema'] != 'theorem-notary/consumer-lock/v1'
-                   or not locked['certificates']):
-        raise NotaryError('Malformed consumer lock')
     files = core['files']
     paths = [f['path'] for f in files]
     if len(paths) != len(set(paths)) or files != inventory(folder, paths):
@@ -148,12 +180,16 @@ def verify_bundle(folder: Path, locked: dict | None = None, document=None, depth
         if not parts or parts[0] != 'objects/' + name + '.olean':
             raise NotaryError('Module-to-artifact mapping mismatch')
         permitted = {'objects/' + name + s for s in ('.olean', '.olean.server', '.olean.private')}
-        if not set(parts) <= permitted: raise NotaryError('Unexpected module part')
+        ordered = ['objects/' + name + ext for ext in ('.olean', '.olean.server', '.olean.private')
+                   if 'objects/' + name + ext in parts]
+        if type(parts) is not list or parts != ordered or not set(parts) <= permitted:
+            raise NotaryError('Unexpected or noncanonical module parts')
         expected.update([source, *parts])
     if expected != set(paths): raise NotaryError('Incomplete module inventory')
     certificates = bundle['certificates']
     seen = set()
     for cert in certificates:
+        validate_certificate_envelope(cert)
         verify_descriptor(cert)
         c = cert['core']
         if set(c) != {'schema', 'kind', 'bundle_id', 'interface', 'allowed_axioms'}:
@@ -173,8 +209,10 @@ def verify_bundle(folder: Path, locked: dict | None = None, document=None, depth
     for dependency in dependencies:
         if not set(dependency['core']['modules']) <= set(modules):
             raise NotaryError('Missing transitive module closure')
+        if any(modules[name] != parts for name, parts in dependency['core']['modules'].items()):
+            raise NotaryError('Inherited module proof-data parts changed')
         verify_bundle(folder, document=dependency, depth=depth + 1)
-    if locked and not set(locked['certificates']) <= {c['component_id'] for c in certificates}:
+    if locked is not None and not set(locked['certificates']) <= {c['component_id'] for c in certificates}:
         raise NotaryError('Consumer-locked declaration changed or disappeared')
     return bundle
 
@@ -211,6 +249,8 @@ def checker(folder: Path, modules: list[str], declarations: list[str], allowed: 
     checked = load(output_path)
     if checked['kernel_replayed'] is not replay or checked['extensions_initialized'] is not False:
         raise NotaryError('Checker assurance mismatch')
+    if checked.get('original_declarations_checked') is not True:
+        raise NotaryError('Original declaration coverage was not checked')
     if {x['interface']['declaration'] for x in checked['declarations']} != set(declarations):
         raise NotaryError('Checker selected a different declaration')
     return checked, elapsed
@@ -246,7 +286,39 @@ def admission_scope(folder: Path, bundle: dict, binary: Path, base: list[dict]) 
             'lean_binary_sha256': sha256(binary), 'foundation_files': current_base}
 
 
+def check_realization_coverage(bundle: dict, report: dict, supplied: set[str]) -> None:
+    """Audit every nested certificate in its own realization, not the outer union.
+
+    Identical original declarations can have multiple module origins. At least
+    one origin must be available in this realization or the trusted installation.
+    Module import headers are checked too, including unused explicit imports.
+    """
+    modules = {row['module']: row for row in report['modules']}
+    foundation = set(modules) - supplied
+    observed = {row['interface']['declaration']: row for row in report['declarations']}
+    own = set(bundle['core']['modules'])
+    available = own | foundation
+    if not own <= set(modules):
+        raise NotaryError('Realization module absent from checker report')
+    for name in own:
+        if not set(modules[name]['imports']) <= available:
+            raise NotaryError('Realization omits an actual module import: ' + name)
+    for cert in bundle['certificates']:
+        expected = cert['core']
+        row = observed[expected['interface']['declaration']]
+        if (row['interface'] != expected['interface']
+                or not set(row['axioms']) <= set(expected['allowed_axioms'])):
+            raise NotaryError('Actual declaration or foundation differs from its signed certificate')
+        alternatives = row['dependency_module_alternatives']
+        if not alternatives or any(not available.intersection(names) for names in alternatives):
+            raise NotaryError('Realization omits an original proof dependency: '
+                              + expected['interface']['declaration'])
+    for dependency in bundle['dependencies']:
+        check_realization_coverage(dependency, report, supplied)
+
+
 def admit(folder: Path, locked: dict, state: Path) -> dict:
+    validate_lock(locked)
     folder, state = folder.resolve(), state.resolve()
     if state.is_relative_to(folder):
         raise NotaryError('Local acceptance state must be outside the publisher bundle')
@@ -273,12 +345,7 @@ def admit(folder: Path, locked: dict, state: Path) -> dict:
         report, elapsed = checker(folder, list(bundle['core']['modules']), names, allowed, state, binary)
         own, base = actual_closure(folder, report, binary)
         if own != set(bundle['core']['modules']): raise NotaryError('Actual import closure differs from bundle')
-        by_name = {x['interface']['declaration']: x for x in report['declarations']}
-        for c in certs:
-            expected = c['core']
-            observed = by_name[expected['interface']['declaration']]
-            if observed['interface'] != expected['interface'] or not set(observed['axioms']) <= set(expected['allowed_axioms']):
-                raise NotaryError('Actual declaration or foundation differs from its signed certificate')
+        check_realization_coverage(bundle, report, own)
         verify_bundle(folder, locked)
         if before != inventory(folder, [f['path'] for f in bundle['core']['files']]):
             raise NotaryError('Proof bytes changed during checking')
@@ -338,18 +405,15 @@ def export(config_path: Path, folder: Path, state: Path, provider: str, key_path
     inherited_certs = [c for b in dependencies for c in certificates_in(b)]
     checked_names = sorted(set(declarations) | {c['core']['interface']['declaration'] for c in inherited_certs})
     allowed = sorted(set(cfg['allowed_axioms']) | {a for c in inherited_certs for a in c['core']['allowed_axioms']})
-    report, kernel_ms = checker(folder, roots, checked_names, allowed, state, binary)
+    report, kernel_ms = checker(folder, sorted(set(roots) | set(inherited)), checked_names, allowed, state, binary)
     observed = {r['interface']['declaration']: r for r in report['declarations']}
-    for cert in inherited_certs:
-        c = cert['core']
-        row = observed[c['interface']['declaration']]
-        if row['interface'] != c['interface'] or not set(row['axioms']) <= set(c['allowed_axioms']):
-            raise NotaryError('Inherited certificate differs from actual declaration')
     for name in declarations:
         if not set(observed[name]['axioms']) <= set(cfg['allowed_axioms']):
             raise NotaryError('Selected theorem exceeds its declared logical foundation')
     own, _ = actual_closure(folder, report, binary)
     if own != set(roots) | set(inherited): raise NotaryError('Unlisted/missing transitive module')
+    for dependency in dependencies:
+        check_realization_coverage(dependency, report, own)
     modules, paths = {}, []
     for module in sorted(own):
         rel = module.replace('.', '/')
@@ -366,6 +430,7 @@ def export(config_path: Path, folder: Path, state: Path, provider: str, key_path
               'bundle_id': bid, 'interface': row['interface'], 'allowed_axioms': cfg['allowed_axioms']},
               key, provider) for row in report['declarations'] if row['interface']['declaration'] in declarations]
     bundle = {'bundle_id': bid, 'core': core, 'certificates': certs, 'dependencies': dependencies}
+    check_realization_coverage(bundle, report, own)
     write(folder / 'bundle.json', bundle)
     verify_bundle(folder)
     _, base = actual_closure(folder, report, binary)

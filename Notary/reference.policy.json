@@ -6,26 +6,46 @@
   "receipt_path": ".notary/receipts/reference-v1.json",
   "bind_git_head": true,
   "input_globs": [
-    "Notary/Verifier.lean", "Notary/Composition.lean", "Notary/Examples/**/*.lean",
-    "Notary/Examples/provider.json", "Notary/reference.policy.json",
-    "scripts/notary_protocol.py", "scripts/notary_cli.py", "scripts/notary_reference_experiment.py",
-    "scripts/theorem_notary.py", "scripts/notary_fetch.py", "scripts/notary_receipt.py",
-    "lean-toolchain", ".notary/host-runtime.json"
+    "Notary/Verifier.lean",
+    "Notary/Composition.lean",
+    "Notary/Examples/**/*.lean",
+    "Notary/Examples/provider.json",
+    "Notary/reference.policy.json",
+    "scripts/notary_protocol.py",
+    "scripts/notary_cli.py",
+    "scripts/notary_reference_experiment.py",
+    "scripts/theorem_notary.py",
+    "scripts/notary_fetch.py",
+    "scripts/notary_receipt.py",
+    "lean-toolchain",
+    ".notary/host-runtime.json",
+    "scripts/test_*.py",
+    "scripts/notary_overlap_probe.py",
+    "scripts/notary_dependency_probe.py"
   ],
   "exclude_globs": [],
   "kernel_contract": {
     "trust_zero": true,
     "endpoint_declarations": [
       "TheoremNotary.Composition.composition_sound",
-      "NotaryApplication.mirroredPayload_correct", "NotaryApplication.frameSize_correct"
+      "NotaryApplication.mirroredPayload_correct",
+      "NotaryApplication.frameSize_correct"
     ],
     "allowed_axioms": [],
     "scope_note": "Fresh data-only Lean-kernel replay for portable three-project examples, abstract composition model, and hostile admission tests; no Erdos848 replay."
   },
   "command": {
-    "argv": ["python", "scripts/notary_reference_experiment.py"],
+    "argv": [
+      "python",
+      "scripts/notary_reference_experiment.py"
+    ],
     "cwd": ".",
-    "required_output_tokens": ["notary_reference_v1=passed"],
-    "forbidden_output_tokens": ["Traceback", "AssertionError"]
+    "required_output_tokens": [
+      "notary_reference_v1=passed"
+    ],
+    "forbidden_output_tokens": [
+      "Traceback",
+      "AssertionError"
+    ]
   }
 }

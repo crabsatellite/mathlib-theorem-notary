@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import secrets
 from pathlib import Path
 import shutil
@@ -64,6 +65,16 @@ def main():
     write(active, {'directory': work.name})
     results, attacks = {}, []
     results['resumed_after_fixture_failure'] = resumed
+    print('reference_stage=python-regressions', flush=True)
+    regression = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'scripts',
+                                 '-p', 'test_*.py', '-v'], cwd=ROOT, capture_output=True,
+                                text=True, encoding='utf-8', errors='replace')
+    regression_text = regression.stdout + regression.stderr
+    (work / 'regressions.log').write_text(regression_text, encoding='utf-8')
+    matched = re.search(r'Ran (\d+) tests?', regression_text)
+    if regression.returncode or not matched:
+        raise AssertionError('Python regressions failed: ' + regression_text)
+    results['python_regressions'] = int(matched.group(1))
     receiver = work / ('receiver-' + secrets.token_hex(6))
     binary = p.lean_binary()
     print('reference_stage=initializer-isolation', flush=True)
@@ -91,6 +102,10 @@ def main():
         p.admit(init_bundle, p.make_lock(init_bundle, ['initializer_safe_math']), work / ('initializer-receiver-' + secrets.token_hex(6)))
     if marker.exists(): raise AssertionError('Publisher initializer executed during admission')
     attacks.append('publisher-initializer-not-executed-positive-control-confirmed')
+    print('reference_stage=original-proof-overlap', flush=True)
+    from notary_overlap_probe import run as overlap_probe
+    overlap_probe()
+    attacks.append('same-type-overlap-cannot-replace-original-proof')
     print('reference_stage=composition', flush=True)
     composition = run([str(binary), '--trust=0', str(ROOT / 'Notary/Composition.lean')])
     if composition.count('does not depend on any axioms') != 3:
@@ -115,6 +130,15 @@ def main():
         raise NotaryError('Unchanged consumer did not reuse its verified proof')
     results['cold_kernel_replays'] = cold_result['kernel_replays']
     results['warm_kernel_replays'] = warm['kernel_replays']
+    # A malformed or absent consumer selection must not reach local reuse.
+    for missing_lock in [None, {}, [], False, 0, '']:
+        try:
+            p.admit(cold, missing_lock, receiver)
+        except NotaryError:
+            pass
+        else:
+            raise AssertionError('Missing consumer selection authorized admission reuse')
+    attacks.append('missing-consumer-selection-rejected-before-local-reuse')
     results['separate_local_keys'] = (p.sha256(output / 'publisher/acceptance/host.key') !=
                                       p.sha256(receiver / 'host.key'))
     if not results['separate_local_keys']: raise NotaryError('Cold consumer reused the publisher trust root')
@@ -164,6 +188,10 @@ def main():
     results['actual_cross_project_theorem_use'] = True
     results['signed_theorems'] = sum(len(p.verify_bundle(path)['certificates'])
                                    for path in (provider_path, consumer_path, application_path))
+    print('reference_stage=nested-realization-coverage', flush=True)
+    from notary_dependency_probe import run as dependency_probe
+    dependency_probe(application_path)
+    attacks.append('outer-modules-cannot-cover-omitted-inner-dependency')
     print('reference_stage=baselines-and-update', flush=True)
     # Same process boundary and artifacts as the notary consumer, but no protocol admission.
     plain = work / ('plain-baseline-' + secrets.token_hex(6))
